@@ -60,9 +60,26 @@ WHEN TO ESCALATE
 
 ## The web UI
 
-There is a guided web version: pick a symptom and answer each check, and a
-vertical "diagnostic spine" fills in as you go, ending on the cause/fix/escalate
-card. It runs as a plain static page (host `docs/` free on GitHub Pages), or
+**Live: https://net-doctor-nu.vercel.app/**
+
+A guided, multi-view web app. Pick a symptom and answer each check; a vertical
+diagnostic spine fills in as you go, ending on the cause / fix / escalate card.
+It adds a few things on top of the core engine that a real first-line tech needs:
+
+- **OS-aware commands** — a Windows / macOS / Linux switch shows the right
+  syntax at each step (`ipconfig` vs `ifconfig` vs `ip addr`, `nslookup` vs
+  `dig`, and so on).
+- **Environment context** — Home / Office / VPN, which changes the likely cause
+  at the DNS and gateway layers.
+- **Multi-user flag** — one question up front; if several people are affected it
+  routes to a major-incident warning instead of single-user steps.
+- **Escalation card** — generates a copyable summary (checks done, probable
+  cause, recommended next step, priority) to paste straight into a ticket.
+- **Reference tab** — the layered method and an OS command cheat sheet.
+
+Navigation collapses to a hamburger menu on small screens.
+
+It runs as a plain static page (host `docs/` on Vercel or GitHub Pages), or
 behind the Python engine:
 
 ```bash
@@ -71,9 +88,11 @@ uvicorn web.server:app --reload
 # open http://127.0.0.1:8000
 ```
 
-With the server running, `GET /api/flows` returns the trees straight from
-`net_doctor/flows.py`, so the page and the Python module never drift. A
-`Dockerfile` and `render.yaml` are included for a free deploy.
+With the server running, `GET /api/flows` returns the decision trees straight
+from `net_doctor/flows.py`. The Python package stays the canonical rule engine
+for the core branching logic; the web app layers the OS/environment/escalation
+features on top. A `Dockerfile`, `render.yaml` and `vercel.json` are included for
+a free deploy.
 
 ## Running the tests
 

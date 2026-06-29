@@ -4,55 +4,91 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>net-doctor — structured network troubleshooting</title>
-<meta name="description" content="A guided, layered diagnostic for first-line network faults." />
+<meta name="description" content="A guided, layered diagnostic for first-line network faults, with OS-aware commands and a copyable escalation card." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Chivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   /*
-    net-doctor v2 — DIAGNOSTIC INSTRUMENT.
-    Reads like a piece of test equipment, not a dark SaaS dashboard. Warm-shifted
-    off-black, a single amber signal colour (deliberately outside the blue/indigo
-    slop band), flat square status markers (no glow), command lines prefixed like
-    a shell, and a bracketed diagnosis report. State is shown by colour AND a text
-    label so it survives colour-blindness and greyscale.
+    net-doctor v3 — DIAGNOSTIC INSTRUMENT (multi-view).
+    Warm-shifted off-black, one amber signal colour (outside the blue/indigo slop
+    band), flat square markers, no glow, no decorative grid. State shown by colour
+    AND text label. Nav collapses to a hamburger on narrow screens.
   */
   :root{
-    --bg:#15171c; --panel:#1b1e24; --inset:#11131a; --line:#2b2f37;
+    --bg:#15171c; --panel:#1b1e24; --inset:#11131a; --line:#2b2f37; --line-soft:#23272e;
     --ink:#e9e4d9; --soft:#a7a294; --mute:#6f6c63;
     --amber:#eaa044; --amber-deep:#7a5526;
     --ok:#8fb38c; --ok-bg:#1a241d; --ok-line:#2d3c30;
     --fail:#d8694f; --fail-bg:#251a17; --fail-line:#3c2620;
     --radius:8px; --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"Chivo",system-ui,sans-serif;
-    --ease:380ms cubic-bezier(.2,.7,.2,1);
+    --ease:340ms cubic-bezier(.2,.7,.2,1);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55}
-  .wrap{max-width:880px;margin:0 auto;padding:0 28px}
-  header.mast{padding:56px 0 28px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:11px}
-  .eyebrow .mk{display:inline-flex}
-  h1{font-family:var(--mono);font-weight:700;font-size:clamp(25px,4.2vw,38px);line-height:1.14;letter-spacing:-.005em;margin:18px 0 0;max-width:22ch;color:var(--ink)}
-  .lede{font-size:16px;color:var(--soft);margin:14px 0 0;max-width:60ch}
-  .lede b{color:var(--ink);font-weight:600}
-  .meta{font-family:var(--mono);font-size:12px;color:var(--mute);margin:16px 0 0;letter-spacing:.02em}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
-  .pad{padding:20px 22px}
+  .wrap{max-width:900px;margin:0 auto;padding:0 28px}
+  a{color:inherit}
 
-  /* symptom list — reads like a labelled instrument menu, not glossy cards */
-  .pick{display:grid;gap:8px;padding-bottom:60px}
+  /* ---- top bar / nav ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(21,23,28,.86);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+  .topbar .row{max-width:900px;margin:0 auto;padding:13px 28px;display:flex;align-items:center;gap:16px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:700;font-size:14px;color:var(--ink);letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:2px;background:var(--amber)}
+  .nav{display:flex;gap:4px;margin-left:auto;align-items:center}
+  .nav a{font-family:var(--mono);font-size:12.5px;color:var(--soft);text-decoration:none;padding:7px 12px;border-radius:6px;border:1px solid transparent;cursor:pointer;letter-spacing:.02em}
+  .nav a:hover{color:var(--ink);border-color:var(--line)}
+  .nav a.active{color:var(--amber);border-color:var(--amber-deep);background:#211a10}
+  .nav .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+  .hamb{display:none;margin-left:auto;background:transparent;border:1px solid var(--line);border-radius:7px;padding:8px 10px;cursor:pointer}
+  .hamb span{display:block;width:18px;height:2px;background:var(--ink);margin:3px 0;border-radius:2px}
+  @media (max-width:680px){
+    .nav{display:none;position:absolute;top:54px;right:14px;left:14px;flex-direction:column;align-items:stretch;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin:0}
+    .nav.open{display:flex}
+    .nav .sep{display:none}
+    .hamb{display:block}
+  }
+
+  /* settings popover */
+  .settings{position:relative}
+  .setbtn{font-family:var(--mono);font-size:12.5px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer}
+  .setbtn:hover{color:var(--ink);border-color:var(--amber-deep)}
+  .setpanel{display:none;position:absolute;right:0;top:38px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;width:236px;box-shadow:0 18px 40px -24px rgba(0,0,0,.7);z-index:40}
+  .setpanel.open{display:block}
+  .setpanel .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 7px}
+  .seg{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+  .seg button{font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--soft);cursor:pointer}
+  .seg button.on{background:var(--amber);color:#1c1205;border-color:var(--amber)}
+  @media (max-width:680px){.settings{margin-left:auto}}
+
+  header.mast{padding:46px 0 24px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber)}
+  h1{font-family:var(--mono);font-weight:700;font-size:clamp(24px,4vw,36px);line-height:1.15;letter-spacing:-.005em;margin:14px 0 0;max-width:22ch;color:var(--ink)}
+  .lede{font-size:15.5px;color:var(--soft);margin:13px 0 0;max-width:62ch}
+  .lede b{color:var(--ink);font-weight:600}
+  .ctx{font-family:var(--mono);font-size:12px;color:var(--mute);margin:14px 0 0}
+  .ctx b{color:var(--amber);font-weight:500}
+
+  .view{padding-bottom:72px}
+  .hidden{display:none}
+
+  /* multi-user precheck */
+  .precheck{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 16px;margin:6px 0 18px;flex-wrap:wrap}
+  .precheck .q{font-size:14px;color:var(--ink)}
+  .precheck .seg{margin:0}
+  .banner{background:var(--fail-bg);border:1px solid var(--fail-line);border-left:3px solid var(--fail);border-radius:var(--radius);padding:13px 16px;margin:0 0 18px;color:var(--ink);font-size:14px}
+  .banner b{color:var(--fail)}
+
+  /* symptom list */
+  .pick{display:grid;gap:8px}
   .symptom{display:flex;align-items:center;gap:16px;width:100%;text-align:left;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-left:2px solid transparent;border-radius:var(--radius);padding:16px 18px;transition:border-color var(--ease),background var(--ease)}
-  .symptom:hover{border-color:var(--line);border-left-color:var(--amber);background:#20242b}
+  .symptom:hover{border-left-color:var(--amber);background:#20242b}
   .symptom:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-  .symptom .n{font-family:var(--mono);font-weight:700;font-size:12.5px;color:var(--amber);border:1px solid var(--amber-deep);background:transparent;width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .symptom .n{font-family:var(--mono);font-weight:700;font-size:12.5px;color:var(--amber);border:1px solid var(--amber-deep);width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
   .symptom .t{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink)}
   .symptom .d{font-size:13px;color:var(--mute);margin-top:3px}
 
-  .session{padding-bottom:72px}
-  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-  .topbar .flowtitle{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--ink)}
-
-  /* the diagnostic log: a thin ruled gutter, flat SQUARE markers (no glow) */
+  .topflow{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .topflow .flowtitle{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--ink)}
   .spine{position:relative;margin-left:5px;padding-left:30px}
   .spine::before{content:"";position:absolute;left:8px;top:7px;bottom:18px;width:1px;background:var(--line)}
   .node{position:relative;margin-bottom:16px}
@@ -61,17 +97,17 @@
   .node.done.fail::before{background:var(--fail);border-color:var(--fail)}
   .node.active::before{background:var(--bg);border-color:var(--amber)}
   .node .step{font-size:15px;color:var(--ink)}
-  .node .cmd{font-family:var(--mono);font-size:12.5px;color:#cbc5b8;background:var(--inset);border:1px solid var(--line);border-left:2px solid var(--amber);border-radius:5px;padding:7px 11px;margin:9px 0;display:inline-block}
-  .node .cmd::before{content:"$ ";color:var(--amber)}
+  .cmd{font-family:var(--mono);font-size:12.5px;color:#cbc5b8;background:var(--inset);border:1px solid var(--line);border-left:2px solid var(--amber);border-radius:5px;padding:7px 11px;margin:9px 0;display:inline-block}
+  .cmd::before{content:"$ ";color:var(--amber)}
   .node .interp{font-size:13px;color:var(--soft);margin:6px 0 0}
-  .node .verdict{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin-top:9px;display:inline-block;padding:3px 9px;border-radius:4px}
+  .verdict{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin-top:9px;display:inline-block;padding:3px 9px;border-radius:4px}
   .verdict.pass{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-line)}
   .verdict.fail{background:var(--fail-bg);color:var(--fail);border:1px solid var(--fail-line)}
+  .answers{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap}
 
-  .answers{display:flex;gap:9px;margin-top:13px}
-  button{font-family:var(--mono);font-size:13px;font-weight:600;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid transparent;transition:background var(--ease),border-color var(--ease)}
-  button:active{transform:translateY(1px)}
-  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  button.btn{font-family:var(--mono);font-size:13px;font-weight:600;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid transparent;transition:background var(--ease),border-color var(--ease)}
+  button.btn:active{transform:translateY(1px)}
+  button.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   .btn-pass{background:var(--ok);color:#11231a}
   .btn-pass:hover{background:#9cc098}
   .btn-fail{background:var(--fail);color:#26120d}
@@ -81,16 +117,38 @@
   .btn-primary{background:var(--amber);color:#1c1205}
   .btn-primary:hover{background:#f1b25e}
 
-  /* diagnosis: a bracketed report block, no glow */
-  .conclusion{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);margin-top:10px}
-  .conclusion .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:0 0 6px}
-  .conclusion .lbl::before{content:"> "}
+  .conclusion{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:var(--radius);padding:20px 22px;margin-top:10px}
+  .conclusion .clbl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:0 0 6px}
+  .conclusion .clbl::before{content:"> "}
   .conclusion h3{font-family:var(--mono);font-size:17px;font-weight:700;margin:0 0 2px;color:var(--ink);line-height:1.3}
   .conclusion .blk{margin-top:15px}
   .conclusion p{margin:0;font-size:14px;color:var(--soft)}
-  .conclusion .blk .h{font-family:var(--mono);font-weight:700;color:var(--ink);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
-  .conclusion .blk:nth-of-type(2) .h{color:var(--ok)}
+  .conclusion .h{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;color:var(--ink)}
+  .conclusion .h.fix{color:var(--ok)}
+  .conclusion .h.env{color:var(--amber)}
+  .concl-actions{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
 
+  /* escalation card */
+  .escwrap{margin-top:4px}
+  pre.card{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;white-space:pre-wrap;line-height:1.6;margin:0}
+  .escbar{display:flex;gap:9px;margin:0 0 14px;flex-wrap:wrap;align-items:center}
+
+  /* reference */
+  .ref h2{font-family:var(--mono);font-size:15px;color:var(--amber);letter-spacing:.04em;margin:26px 0 10px}
+  .layerlist{list-style:none;padding:0;margin:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .layerlist li{display:flex;gap:14px;padding:13px 16px;border-bottom:1px solid var(--line-soft);font-size:14px;color:var(--soft)}
+  .layerlist li:last-child{border-bottom:0}
+  .layerlist .ln{font-family:var(--mono);color:var(--amber);font-weight:700;flex:0 0 92px}
+  .layerlist b{color:var(--ink)}
+  table.cheat{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;font-size:12.5px}
+  table.cheat th,table.cheat td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  table.cheat th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);background:#181b21}
+  table.cheat td.k{color:var(--soft)}
+  table.cheat td code{font-family:var(--mono);color:var(--amber)}
+  table.cheat tr:last-child td{border-bottom:0}
+
+  .empty{border:1px dashed var(--line);border-radius:var(--radius);padding:32px;color:var(--soft);font-size:14px}
+  .empty b{color:var(--ink)}
   .enter{opacity:0;transform:translateY(7px);animation:rise var(--ease) forwards}
   @keyframes rise{to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){.enter{animation:none;opacity:1;transform:none}button{transition:none}}
@@ -101,22 +159,45 @@
 </style>
 </head>
 <body>
+<div class="topbar">
+  <div class="row">
+    <div class="brand"><span class="dot"></span> net-doctor</div>
+    <button class="hamb" id="hamb" aria-label="Menu"><span></span><span></span><span></span></button>
+    <nav class="nav" id="nav">
+      <a data-view="diagnose" class="active">Diagnose</a>
+      <a data-view="escalation">Escalation card</a>
+      <a data-view="reference">Reference</a>
+      <span class="sep"></span>
+      <span class="settings">
+        <button class="setbtn" id="setbtn">Settings</button>
+        <div class="setpanel" id="setpanel">
+          <p class="lbl">Operating system</p>
+          <div class="seg" id="seg-os">
+            <button data-os="win" class="on">Windows</button>
+            <button data-os="mac">macOS</button>
+            <button data-os="linux">Linux</button>
+          </div>
+          <p class="lbl">Environment</p>
+          <div class="seg" id="seg-env">
+            <button data-env="office" class="on">Office</button>
+            <button data-env="home">Home</button>
+            <button data-env="vpn">VPN</button>
+          </div>
+        </div>
+      </span>
+    </nav>
+  </div>
+</div>
+
 <div class="wrap">
   <header class="mast">
-    <div class="eyebrow">
-      <span class="mk" aria-hidden="true">
-        <svg width="26" height="12" viewBox="0 0 26 12" fill="none">
-          <path d="M0 6 H6 V2 H12 V10 H18 V6 H26" stroke="#eaa044" stroke-width="1.7" fill="none" stroke-linejoin="round"/>
-        </svg>
-      </span>
-      net-doctor · network diagnostics
-    </div>
+    <div class="eyebrow">net-doctor · network diagnostics</div>
     <h1>One check at a time, in the right order.</h1>
-    <p class="lede">Network faults are rarely one problem. This walks the layered method a technician uses: <b>link, IP, gateway, DNS, then the app</b>, stopping at the first thing that is actually broken and telling you the likely cause, the fix, and when to escalate.</p>
-    <p class="meta">rule-based · 4 diagnostic flows · runs in your browser</p>
+    <p class="lede">A layered diagnostic for first-line network faults: <b>link, IP, gateway, DNS, then the app</b>. It stops at the first broken layer, shows the command for your OS, and hands you a copyable escalation card for second line.</p>
+    <p class="ctx" id="ctx"></p>
   </header>
 
-  <main id="app"></main>
+  <main id="main"></main>
 
   <footer>
     <span class="src-note">Rule-based · runs in your browser</span>
@@ -126,36 +207,67 @@
 </div>
 
 <script>
-/* FLOWS mirrors net_doctor/flows.py. The page can also load them from a backend
-   at GET /api/flows, but it works fully offline with these. */
+/* ---------- OS-aware command tokens ---------- */
+const OSCMD = {
+  showip:   {win:"ipconfig",                 mac:"ifconfig",                    linux:"ip addr"},
+  showip_all:{win:"ipconfig /all",           mac:"ifconfig -a",                 linux:"ip addr show"},
+  ping_gw:  {win:"ping <default-gateway>",   mac:"ping -c 4 <default-gateway>", linux:"ping -c 4 <default-gateway>"},
+  ping_ext: {win:"ping 8.8.8.8",             mac:"ping -c 4 8.8.8.8",           linux:"ping -c 4 8.8.8.8"},
+  dnslook:  {win:"nslookup microsoft.com",   mac:"nslookup microsoft.com",      linux:"dig microsoft.com"},
+  flushdns: {win:"ipconfig /flushdns",       mac:"sudo dscacheutil -flushcache",linux:"sudo systemd-resolve --flush-caches"},
+  renew:    {win:"ipconfig /release & ipconfig /renew", mac:"sudo ipconfig set en0 DHCP", linux:"sudo dhclient -r && sudo dhclient"},
+};
+const OSLABEL = {win:"Windows", mac:"macOS", linux:"Linux"};
+const ENVLABEL = {office:"Office", home:"Home", vpn:"VPN"};
+
+/* environment-specific cause hints, keyed by conclusion id */
+const ENV_HINT = {
+  "fix-dns": {
+    office:"In the office a DNS failure usually means the internal DNS server is unreachable, not the PC.",
+    home:"At home a DNS failure usually means the ISP resolver is down or the router needs a restart.",
+    vpn:"On VPN a DNS failure usually means split-tunnel DNS is not being applied for internal names.",
+  },
+  "fix-gateway": {
+    office:"In the office, an unreachable gateway often points at the switch port or VLAN assignment.",
+    home:"At home, an unreachable gateway usually means the router itself needs a power-cycle.",
+    vpn:"On VPN, check whether the tunnel changed your routes before blaming the local gateway.",
+  },
+  "fix-dns-site": {
+    office:"Site-wide in the office: check the internal DNS/firewall appliance, not individual PCs.",
+    home:"At a small site: restart the router that serves DNS and confirm the ISP line is up.",
+    vpn:"",
+  },
+};
+
+/* ---------- FLOWS (mirrors net_doctor/flows.py; oscmd token used where a step has a real command) ---------- */
 const FLOWS = {
   "one-pc-no-internet":{title:"One PC has no internet (others are fine)",description:"A single machine cannot reach the internet while the rest of the office is working.",start:"link",steps:{
-    link:{kind:"check",text:"Is the network link up? Check the Ethernet / Wi-Fi status and the cable or wireless connection.",command:"ipconfig",interpret:"'Media disconnected' means the link is down. A connected adapter shows an IPv4 address.",on_fail:"fix-link",on_pass:"ipaddr"},
+    link:{kind:"check",text:"Is the network link up? Check the Ethernet / Wi-Fi status and the cable or wireless connection.",oscmd:"showip",interpret:"'Media disconnected' means the link is down. A connected adapter shows an IPv4 address.",on_fail:"fix-link",on_pass:"ipaddr"},
     "fix-link":{kind:"conclusion",cause:"Physical or wireless link is down on this PC.",fix:"Reseat or replace the cable, try another wall/switch port, or re-join the Wi-Fi. Confirm the adapter is enabled.",escalate:"If a known-good cable and port still show 'Media disconnected', escalate as a possible NIC or switch-port fault."},
-    ipaddr:{kind:"check",text:"Does the PC have a valid IP address from DHCP?",command:"ipconfig /all",interpret:"A 169.254.x.x address (APIPA) means DHCP failed. A normal office address (with a listed DHCP server) is fine.",on_fail:"fix-dhcp",on_pass:"gateway"},
-    "fix-dhcp":{kind:"conclusion",cause:"The PC did not get an address from DHCP (self-assigned 169.254.x.x).",fix:"Run 'ipconfig /release' then 'ipconfig /renew'. If it still self-assigns, check the cable/port and the DHCP scope.",escalate:"If multiple PCs show APIPA, escalate: the DHCP server or scope is the likely cause, not this PC."},
-    gateway:{kind:"check",text:"Can the PC reach its default gateway (the local router)?",command:"ping <default-gateway-from-ipconfig>",interpret:"Replies mean the local path is good. Timeouts mean the problem is between the PC and the router.",on_fail:"fix-gateway",on_pass:"dns"},
+    ipaddr:{kind:"check",text:"Does the PC have a valid IP address from DHCP?",oscmd:"showip_all",interpret:"A 169.254.x.x address (APIPA) means DHCP failed. A normal office address (with a listed DHCP server) is fine.",on_fail:"fix-dhcp",on_pass:"gateway"},
+    "fix-dhcp":{kind:"conclusion",cause:"The PC did not get an address from DHCP (self-assigned 169.254.x.x).",fix:"Release and renew the lease ($ "+OSCMD.renew.win+"). If it still self-assigns, check the cable/port and the DHCP scope.",escalate:"If multiple PCs show APIPA, escalate: the DHCP server or scope is the likely cause, not this PC."},
+    gateway:{kind:"check",text:"Can the PC reach its default gateway (the local router)?",oscmd:"ping_gw",interpret:"Replies mean the local path is good. Timeouts mean the problem is between the PC and the router.",on_fail:"fix-gateway",on_pass:"dns"},
     "fix-gateway":{kind:"conclusion",cause:"The PC cannot reach the local gateway, so nothing beyond the LAN will work.",fix:"Check for a wrong static IP or subnet mask, a VLAN mismatch on the switch port, or a local firewall. Set the adapter back to DHCP if it was static.",escalate:"If addressing is correct and the gateway still does not answer, escalate to network/switch support."},
-    dns:{kind:"check",text:"Can the PC resolve names? Test DNS directly.",command:"nslookup microsoft.com",interpret:"A returned address means DNS works. 'request timed out' / 'can't find' means name resolution is broken even though the path is fine.",on_fail:"fix-dns",on_pass:"outbound"},
-    "fix-dns":{kind:"conclusion",cause:"Name resolution (DNS) is failing on this PC.",fix:"Run 'ipconfig /flushdns'. Confirm the DNS servers in 'ipconfig /all' match the office DNS; if wrong, set the adapter back to DHCP.",escalate:"If DNS settings are correct and lookups still fail, escalate: the DNS server may be down."},
-    outbound:{kind:"check",text:"Can the PC reach the internet by IP, bypassing DNS?",command:"ping 8.8.8.8",interpret:"Replies here but failures by name point at DNS or a proxy. Timeouts here point at the gateway or upstream line.",on_fail:"fix-gateway",on_pass:"fix-app"},
-    "fix-app":{kind:"conclusion",cause:"Network, IP and DNS are all healthy, so the issue is above the network layer.",fix:"Check the browser proxy settings, any local firewall or web filter, and the specific app. Test in a second browser or InPrivate window.",escalate:"If a proxy or web filter is enforced centrally, escalate to whoever manages that policy."}
+    dns:{kind:"check",text:"Can the PC resolve names? Test DNS directly.",oscmd:"dnslook",interpret:"A returned address means DNS works. 'request timed out' / 'can't find' means name resolution is broken even though the path is fine.",on_fail:"fix-dns",on_pass:"outbound"},
+    "fix-dns":{kind:"conclusion",cause:"Name resolution (DNS) is failing on this PC.",fix:"Flush the resolver cache ($ "+OSCMD.flushdns.win+"). Confirm the DNS servers match the office DNS; if wrong, set the adapter back to DHCP.",escalate:"If DNS settings are correct and lookups still fail, escalate: the DNS server may be down."},
+    outbound:{kind:"check",text:"Can the PC reach the internet by IP, bypassing DNS?",oscmd:"ping_ext",interpret:"Replies here but failures by name point at DNS or a proxy. Timeouts here point at the gateway or upstream line.",on_fail:"fix-gateway",on_pass:"fix-app"},
+    "fix-app":{kind:"conclusion",cause:"Network, IP and DNS are all healthy, so the issue is above the network layer.",fix:"Check the browser proxy settings, any local firewall or web filter, and the specific app. Test in a second browser or private window.",escalate:"If a proxy or web filter is enforced centrally, escalate to whoever manages that policy."}
   }},
   "site-down-whole-office":{title:"Whole office or store has no internet",description:"Multiple users at one site cannot reach the internet at the same time.",start:"scope",steps:{
     scope:{kind:"check",text:"Confirm the scope: are most or all users at this site affected (not just one)?",command:"Ask two or three users at different desks; check if Wi-Fi and wired are both down.",interpret:"Many users points at shared kit (router, line, switch). Only one points back to the single-PC flow.",on_fail:"use-single",on_pass:"router"},
     "use-single":{kind:"conclusion",cause:"Only one user is actually affected.",fix:"Switch to the 'one PC has no internet' flow, which isolates a single machine.",escalate:"No site-wide escalation needed yet."},
     router:{kind:"check",text:"Are the router and modem powered and showing normal link lights?",command:"Look at the router/ONT: power, internet/WAN and LAN lights.",interpret:"A red or dark WAN/internet light usually means the provider line is down, not your LAN.",on_fail:"fix-line",on_pass:"switch"},
     "fix-line":{kind:"conclusion",cause:"The internet line from the provider appears down (WAN light red/off).",fix:"Power-cycle the router/modem once. If the WAN light stays down for several minutes, log a fault with the ISP and note the start time.",escalate:"Raise an ISP ticket and inform the IT manager; this is an outage, not a desk fix."},
-    switch:{kind:"check",text:"Is the internal network healthy? Can a working PC reach the gateway?",command:"ping <default-gateway>  (from a wired PC)",interpret:"If even the gateway is unreachable site-wide, a core switch or router has likely failed.",on_fail:"fix-switch",on_pass:"fix-dns-site"},
+    switch:{kind:"check",text:"Is the internal network healthy? Can a working PC reach the gateway?",oscmd:"ping_gw",interpret:"If even the gateway is unreachable site-wide, a core switch or router has likely failed.",on_fail:"fix-switch",on_pass:"fix-dns-site"},
     "fix-switch":{kind:"conclusion",cause:"The local network path is down for everyone (core switch or router fault).",fix:"Check the main switch for power and link lights; reseat the uplink. Swap to a spare if a switch is dead.",escalate:"Escalate to network support with the affected site and start time."},
-    "fix-dns-site":{kind:"conclusion",cause:"The LAN is up but the internet is not reachable for the site, commonly DNS or the upstream line.",fix:"Test 'ping 8.8.8.8' (path) and 'nslookup microsoft.com' (DNS) from a working PC to decide which. Restart the router if it serves DNS.",escalate:"If the line is up but nothing resolves, escalate to whoever runs DNS/firewall."}
+    "fix-dns-site":{kind:"conclusion",cause:"The LAN is up but the internet is not reachable for the site, commonly DNS or the upstream line.",fix:"Test the path ($ "+OSCMD.ping_ext.win+") and DNS ($ "+OSCMD.dnslook.win+") from a working PC to decide which. Restart the router if it serves DNS.",escalate:"If the line is up but nothing resolves, escalate to whoever runs DNS/firewall."}
   }},
   "cant-reach-internal-vpn":{title:"Can't reach an internal site or SharePoint (VPN connected)",description:"The user is on VPN and online generally, but a specific internal resource will not load.",start:"vpn",steps:{
-    vpn:{kind:"check",text:"Is the VPN actually connected and showing an assigned address?",command:"Check the VPN client status, and 'ipconfig' for the VPN adapter's IP.",interpret:"Connected with an internal IP means the tunnel is up. If not, the tunnel is the problem.",on_fail:"fix-vpn",on_pass:"other-internal"},
+    vpn:{kind:"check",text:"Is the VPN actually connected and showing an assigned address?",oscmd:"showip",interpret:"Connected with an internal IP means the tunnel is up. If not, the tunnel is the problem.",on_fail:"fix-vpn",on_pass:"other-internal"},
     "fix-vpn":{kind:"conclusion",cause:"The VPN tunnel is not actually established.",fix:"Reconnect the VPN, confirm credentials/MFA, and check the user has plain internet first (the tunnel needs a working base connection).",escalate:"If the client connects then drops, escalate with the VPN logs."},
     "other-internal":{kind:"check",text:"Can the user reach any other internal resource (a different intranet site or file share)?",command:"Open a second known internal URL or \\\\server\\share.",interpret:"If everything else internal works, the problem is that one service. If nothing internal works, it is routing/DNS over the tunnel.",on_fail:"fix-tunnel-dns",on_pass:"resolve-name"},
-    "fix-tunnel-dns":{kind:"conclusion",cause:"Nothing internal resolves over the VPN, so split-tunnel DNS or routing is wrong.",fix:"Disconnect and reconnect to refresh routes, run 'ipconfig /flushdns', and confirm the VPN is pushing the internal DNS servers.",escalate:"Escalate to whoever owns the VPN profile if internal DNS is not being applied."},
-    "resolve-name":{kind:"check",text:"Does the specific resource's name resolve to an address?",command:"nslookup sharepoint.yourcompany.local",interpret:"No address means a DNS record issue for that host. An address returned means DNS is fine and the service itself may be down.",on_fail:"fix-record",on_pass:"fix-service"},
+    "fix-tunnel-dns":{kind:"conclusion",cause:"Nothing internal resolves over the VPN, so split-tunnel DNS or routing is wrong.",fix:"Disconnect and reconnect to refresh routes, flush DNS, and confirm the VPN is pushing the internal DNS servers.",escalate:"Escalate to whoever owns the VPN profile if internal DNS is not being applied."},
+    "resolve-name":{kind:"check",text:"Does the specific resource's name resolve to an address?",oscmd:"dnslook",interpret:"No address means a DNS record issue for that host. An address returned means DNS is fine and the service itself may be down.",on_fail:"fix-record",on_pass:"fix-service"},
     "fix-record":{kind:"conclusion",cause:"That one resource does not resolve, even though other internal names do.",fix:"Confirm the exact URL/hostname with the user (typos are common). If the host is genuinely missing from DNS, raise it with the DNS owner.",escalate:"Escalate the missing DNS record to the systems team."},
     "fix-service":{kind:"conclusion",cause:"The name resolves and the path is up, so the service itself is likely the problem.",fix:"Check whether other users can reach the same site. If it is down for everyone, it is a server/service issue, not the user's machine.",escalate:"Escalate to the owner of that application or SharePoint site with the time and affected users."}
   }},
@@ -165,78 +277,154 @@ const FLOWS = {
     band:{kind:"check",text:"Is the drop only on this one PC, or do others nearby also drop?",command:"Compare with a neighbour on the same Wi-Fi; check the wireless adapter driver.",interpret:"Only this PC points at the adapter/driver or power settings. Several PCs points at the AP or interference.",on_fail:"fix-ap",on_pass:"fix-adapter"},
     "fix-ap":{kind:"conclusion",cause:"Several devices drop in the same area, so the access point or local interference is the cause.",fix:"Check the AP for overload or a recent change, look for interference, and reboot the AP out of trading hours.",escalate:"Escalate persistent area-wide drops to wireless support."},
     "fix-adapter":{kind:"conclusion",cause:"Only this PC drops, so the wireless adapter, its driver, or power-saving is the likely cause.",fix:"Update the wireless driver, and turn off 'allow the computer to turn off this device to save power' in the adapter's power management.",escalate:"If it still drops after a driver update on a known-good AP, escalate as possible hardware."}
-  }}
+  }},
 };
 
-const app = document.getElementById("app");
-const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
-let state = null;
+/* ---------- state ---------- */
+const state = { view:"diagnose", os:"win", env:"office", multi:false, key:null, flow:null, stepId:null, history:[], lastResult:null };
+const $ = s => document.querySelector(s);
+const main = $("#main");
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+const cmdFor = step => step.oscmd ? OSCMD[step.oscmd][state.os] : (step.command || "");
 
-function renderPicker(){
-  const keys = Object.keys(FLOWS);
-  app.innerHTML = `<div class="pick enter">` + keys.map((k,i)=>`
-    <button class="symptom" data-key="${k}">
-      <span class="n">${i+1}</span>
-      <span><span class="t">${esc(FLOWS[k].title)}</span><span class="d">${esc(FLOWS[k].description)}</span></span>
-    </button>`).join("") + `</div>`;
-  app.querySelectorAll(".symptom").forEach(b=>b.addEventListener("click",()=>startFlow(b.dataset.key)));
+/* ---------- nav ---------- */
+function setView(v){
+  state.view = v;
+  document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("active", a.dataset.view===v));
+  $("#nav").classList.remove("open");
+  render();
 }
+$("#hamb").addEventListener("click", ()=> $("#nav").classList.toggle("open"));
+document.querySelectorAll(".nav a").forEach(a=> a.addEventListener("click", ()=> setView(a.dataset.view)));
+$("#setbtn").addEventListener("click", e=>{ e.stopPropagation(); $("#setpanel").classList.toggle("open"); });
+document.addEventListener("click", e=>{ if(!e.target.closest(".settings")) $("#setpanel").classList.remove("open"); });
+$("#seg-os").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.os=b.dataset.os; $("#seg-os").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); updateCtx(); render(); });
+$("#seg-env").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.env=b.dataset.env; $("#seg-env").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); updateCtx(); render(); });
 
-function startFlow(key){
-  state = { key, flow: FLOWS[key], stepId: FLOWS[key].start, history: [] };
-  renderSession();
-}
+function updateCtx(){ $("#ctx").innerHTML = `context: OS <b>${OSLABEL[state.os]}</b> · environment <b>${ENVLABEL[state.env]}</b> · 4 diagnostic flows`; }
 
-function renderSession(){
-  const {flow} = state;
-  const nodes = state.history.map(h=>{
-    const s = flow.steps[h.id];
-    return `<div class="node done ${h.passed?'':'fail'}">
-      <div class="step">${esc(s.text)}</div>
-      ${s.command?`<div class="cmd">${esc(s.command)}</div>`:""}
-      <div><span class="verdict ${h.passed?'pass':'fail'}">${h.passed?'looked healthy':'not right'}</span></div>
+/* ---------- diagnose view ---------- */
+function diagnoseView(){
+  if(!state.flow){
+    const keys = Object.keys(FLOWS);
+    const banner = state.multi ? `<div class="banner enter"><b>Multiple users affected.</b> This is likely a site-wide fault. Open a major incident and escalate before troubleshooting one machine.</div>` : "";
+    const pick = keys.map((k,i)=>`<button class="symptom" data-key="${k}"><span class="n">${i+1}</span><span><span class="t">${esc(FLOWS[k].title)}</span><span class="d">${esc(FLOWS[k].description)}</span></span></button>`).join("");
+    main.innerHTML = `<div class="view enter">
+      <div class="precheck">
+        <span class="q">Is this affecting more than one person?</span>
+        <div class="seg" id="seg-multi">
+          <button data-multi="no" class="${state.multi?'':'on'}">No, one user</button>
+          <button data-multi="yes" class="${state.multi?'on':''}">Yes, several</button>
+        </div>
+      </div>
+      ${banner}
+      <div class="pick">${pick}</div>
     </div>`;
-  }).join("");
-
+    $("#seg-multi").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.multi = b.dataset.multi==="yes"; render(); });
+    main.querySelectorAll(".symptom").forEach(b=> b.addEventListener("click", ()=>{ state.key=b.dataset.key; state.flow=FLOWS[b.dataset.key]; state.stepId=FLOWS[b.dataset.key].start; state.history=[]; render(); }));
+    return;
+  }
+  const flow = state.flow;
+  const nodes = state.history.map(h=>{ const s=flow.steps[h.id]; return `<div class="node done ${h.passed?'':'fail'}"><div class="step">${esc(s.text)}</div>${cmdFor(s)?`<div class="cmd">${esc(cmdFor(s))}</div>`:""}<div><span class="verdict ${h.passed?'pass':'fail'}">${h.passed?'looked healthy':'not right'}</span></div></div>`; }).join("");
   const cur = flow.steps[state.stepId];
-  let active = "";
-  if(cur.kind === "check"){
-    active = `<div class="node active enter">
-      <div class="step">${esc(cur.text)}</div>
-      ${cur.command?`<div class="cmd">${esc(cur.command)}</div>`:""}
-      ${cur.interpret?`<div class="interp">${esc(cur.interpret)}</div>`:""}
-      <div class="answers">
-        <button class="btn-pass" data-a="pass">Passed / looks healthy</button>
-        <button class="btn-fail" data-a="fail">Failed / not right</button>
+  let active="";
+  if(cur.kind==="check"){
+    active = `<div class="node active enter"><div class="step">${esc(cur.text)}</div>${cmdFor(cur)?`<div class="cmd">${esc(cmdFor(cur))}</div>`:""}${cur.interpret?`<div class="interp">${esc(cur.interpret)}</div>`:""}<div class="answers"><button class="btn btn-pass" data-a="pass">Passed / looks healthy</button><button class="btn btn-fail" data-a="fail">Failed / not right</button></div></div>`;
+  } else {
+    const hint = (ENV_HINT[state.stepId]||{})[state.env] || "";
+    active = `<div class="conclusion enter">
+      <p class="clbl">Diagnosis</p>
+      <h3>${esc(cur.cause)}</h3>
+      <div class="blk"><div class="h fix">Fix</div><p>${esc(cur.fix)}</p></div>
+      ${hint?`<div class="blk"><div class="h env">In this environment (${ENVLABEL[state.env]})</div><p>${esc(hint)}</p></div>`:""}
+      <div class="blk"><div class="h">When to escalate</div><p>${esc(cur.escalate)}</p></div>
+      <div class="concl-actions">
+        <button class="btn btn-primary" id="mkcard">Generate escalation card</button>
+        <button class="btn btn-ghost" id="restart">Start over</button>
       </div>
     </div>`;
-  } else {
-    active = `<div class="card conclusion pad enter">
-      <p class="lbl">Diagnosis</p>
-      <h3>${esc(cur.cause)}</h3>
-      <div class="blk"><div class="h">Fix</div><p>${esc(cur.fix)}</p></div>
-      <div class="blk"><div class="h">When to escalate</div><p>${esc(cur.escalate)}</p></div>
-    </div>`;
+    state.lastResult = { key:state.key, title:flow.title, history:state.history.slice(), conclusion:cur, stepId:state.stepId };
   }
-
-  app.innerHTML = `<div class="session enter">
-    <div class="topbar">
-      <button class="btn-ghost" id="restart">&larr; Symptoms</button>
-      <span class="flowtitle">${esc(flow.title)}</span>
-    </div>
+  main.innerHTML = `<div class="view enter">
+    <div class="topflow"><button class="btn btn-ghost" id="back">&larr; Symptoms</button><span class="flowtitle">${esc(flow.title)}</span></div>
+    ${state.multi?`<div class="banner"><b>Multiple users affected.</b> Treat as a possible major incident.</div>`:""}
     <div class="spine">${nodes}${active}</div>
   </div>`;
+  const back=$("#back"); if(back) back.addEventListener("click", resetFlow);
+  const rs=$("#restart"); if(rs) rs.addEventListener("click", resetFlow);
+  const mk=$("#mkcard"); if(mk) mk.addEventListener("click", ()=> setView("escalation"));
+  main.querySelectorAll(".answers button").forEach(b=> b.addEventListener("click", ()=>{ const passed=b.dataset.a==="pass"; state.history.push({id:state.stepId,passed}); state.stepId = passed?cur.on_pass:cur.on_fail; render(); }));
+}
+function resetFlow(){ state.flow=null; state.key=null; state.stepId=null; state.history=[]; render(); }
 
-  document.getElementById("restart").addEventListener("click", renderPicker);
-  app.querySelectorAll(".answers button").forEach(b=>b.addEventListener("click",()=>{
-    const passed = b.dataset.a === "pass";
-    state.history.push({id: state.stepId, passed});
-    state.stepId = passed ? cur.on_pass : cur.on_fail;
-    renderSession();
-  }));
+/* ---------- escalation card view ---------- */
+function escalationText(r){
+  const now = new Date();
+  const hh = now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  const lines = [];
+  lines.push("ESCALATION CARD — net-doctor");
+  lines.push(`Time: ${hh}  |  Environment: ${ENVLABEL[state.env]}  |  OS: ${OSLABEL[state.os]}`);
+  lines.push(`Symptom: ${r.title}`);
+  if(state.multi) lines.push("Scope: MULTIPLE USERS — possible major incident");
+  lines.push("");
+  lines.push("Checks completed:");
+  r.history.forEach(h=>{ const s=r.flowSteps[h.id]; lines.push(`  [${h.passed?"OK":"FAIL"}] ${s.text}`); });
+  lines.push("");
+  lines.push(`Probable cause: ${r.conclusion.cause}`);
+  const hint=(ENV_HINT[r.stepId]||{})[state.env]||""; if(hint) lines.push(`Environment note: ${hint}`);
+  lines.push(`Fix attempted: ${r.conclusion.fix}`);
+  lines.push(`Recommended next: ${r.conclusion.escalate}`);
+  const pri = state.multi ? "High (multi-user)" : (r.history.some(h=>!h.passed) ? "Medium" : "Low");
+  lines.push(`Priority: ${pri}`);
+  return lines.join("\n");
+}
+function escalationView(){
+  const r = state.lastResult;
+  if(!r){ main.innerHTML = `<div class="view enter"><div class="empty"><b>No diagnosis yet.</b><br>Run a diagnostic in the Diagnose tab and reach a conclusion. The escalation card builds itself from the checks you completed, ready to paste into a ticket.</div></div>`; return; }
+  r.flowSteps = FLOWS[r.key].steps;
+  const text = escalationText(r);
+  main.innerHTML = `<div class="view escwrap enter">
+    <div class="escbar"><span class="flowtitle" style="font-family:var(--mono);font-weight:700">Escalation card</span><button class="btn btn-primary" id="copy">Copy to clipboard</button><button class="btn btn-ghost" id="re">Back to diagnosis</button></div>
+    <pre class="card" id="cardtext">${esc(text)}</pre>
+  </div>`;
+  $("#copy").addEventListener("click", async ()=>{ await navigator.clipboard.writeText(text); $("#copy").textContent="Copied"; setTimeout(()=>$("#copy").textContent="Copy to clipboard",1400); });
+  $("#re").addEventListener("click", ()=> setView("diagnose"));
 }
 
-renderPicker();
+/* ---------- reference view ---------- */
+function referenceView(){
+  const rows = [
+    ["Show IP config","showip_all"],
+    ["Ping the gateway","ping_gw"],
+    ["Ping the internet by IP","ping_ext"],
+    ["DNS lookup","dnslook"],
+    ["Flush DNS cache","flushdns"],
+    ["Release / renew DHCP","renew"],
+  ].map(([label,tok])=>`<tr><td class="k">${label}</td><td><code>${esc(OSCMD[tok].win)}</code></td><td><code>${esc(OSCMD[tok].mac)}</code></td><td><code>${esc(OSCMD[tok].linux)}</code></td></tr>`).join("");
+  main.innerHTML = `<div class="view ref enter">
+    <h2>The layered method</h2>
+    <ul class="layerlist">
+      <li><span class="ln">1 · Link</span><span>Is the cable or Wi-Fi physically connected? <b>If the link is down, nothing above it matters.</b></span></li>
+      <li><span class="ln">2 · IP</span><span>Did DHCP hand out a real address? A <b>169.254.x.x</b> address means DHCP failed.</span></li>
+      <li><span class="ln">3 · Gateway</span><span>Can you reach the local router? <b>No gateway, no LAN.</b></span></li>
+      <li><span class="ln">4 · DNS</span><span>Do names resolve to addresses? Internet by IP but not by name <b>points at DNS.</b></span></li>
+      <li><span class="ln">5 · App</span><span>Link, IP, gateway and DNS all fine? The fault is <b>above the network</b> — proxy, firewall, or the app.</span></li>
+    </ul>
+    <h2>Command cheat sheet</h2>
+    <table class="cheat">
+      <thead><tr><th>Check</th><th>Windows</th><th>macOS</th><th>Linux</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function render(){
+  if(state.view==="diagnose") diagnoseView();
+  else if(state.view==="escalation") escalationView();
+  else referenceView();
+}
+updateCtx();
+render();
 </script>
 </body>
 </html>
