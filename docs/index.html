@@ -7,92 +7,113 @@
 <meta name="description" content="A guided, layered diagnostic for first-line network faults." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Chivo:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Chivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   /*
-    net-doctor — CARBON TERMINAL theme.
-    A network tool earns a different register from the paper-calm triage desk:
-    a dark operations console. Monospace-forward, flat (no glassmorphism, no
-    gradients-as-decoration), one phosphor-cyan signal colour that means
-    "healthy / active", amber for the diagnosis label, a clear red for a failed
-    check. The faint grid is an oscilloscope nod, not decoration for its own sake.
+    net-doctor v2 — DIAGNOSTIC INSTRUMENT.
+    Reads like a piece of test equipment, not a dark SaaS dashboard. Warm-shifted
+    off-black, a single amber signal colour (deliberately outside the blue/indigo
+    slop band), flat square status markers (no glow), command lines prefixed like
+    a shell, and a bracketed diagnosis report. State is shown by colour AND a text
+    label so it survives colour-blindness and greyscale.
   */
   :root{
-    --bg:#0e1014; --panel:#14171c; --line:#232932; --ink:#dfe3e8; --soft:#9aa3ad; --mute:#69727c;
-    --signal:#5fe3b0; --amber:#e6b15e; --fail:#ff6f60; --pass:#5fe3b0;
-    --radius:10px; --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"Chivo",system-ui,sans-serif;
-    --motion:460ms cubic-bezier(.16,1,.3,1);
+    --bg:#15171c; --panel:#1b1e24; --inset:#11131a; --line:#2b2f37;
+    --ink:#e9e4d9; --soft:#a7a294; --mute:#6f6c63;
+    --amber:#eaa044; --amber-deep:#7a5526;
+    --ok:#8fb38c; --ok-bg:#1a241d; --ok-line:#2d3c30;
+    --fail:#d8694f; --fail-bg:#251a17; --fail-line:#3c2620;
+    --radius:8px; --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"Chivo",system-ui,sans-serif;
+    --ease:380ms cubic-bezier(.2,.7,.2,1);
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;
-    background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);background-size:36px 36px}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55}
   .wrap{max-width:880px;margin:0 auto;padding:0 28px}
-  header.mast{padding:54px 0 26px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);display:flex;align-items:center;gap:10px}
-  h1{font-family:var(--mono);font-weight:700;font-size:clamp(25px,4.2vw,39px);line-height:1.12;letter-spacing:-.01em;margin:16px 0 0;max-width:21ch;color:#fff}
+  header.mast{padding:56px 0 28px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:11px}
+  .eyebrow .mk{display:inline-flex}
+  h1{font-family:var(--mono);font-weight:700;font-size:clamp(25px,4.2vw,38px);line-height:1.14;letter-spacing:-.005em;margin:18px 0 0;max-width:22ch;color:var(--ink)}
   .lede{font-size:16px;color:var(--soft);margin:14px 0 0;max-width:60ch}
   .lede b{color:var(--ink);font-weight:600}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--mute);margin:16px 0 0;letter-spacing:.02em}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
   .pad{padding:20px 22px}
-  .pick{display:grid;gap:10px;padding-bottom:60px}
-  .symptom{display:flex;align-items:center;gap:15px;width:100%;text-align:left;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;transition:border-color var(--motion),transform 90ms ease}
-  .symptom:hover{border-color:var(--signal);transform:translateY(-1px)}
-  .symptom:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
-  .symptom .n{font-family:var(--mono);font-weight:700;font-size:13px;color:#06231a;background:var(--signal);width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-  .symptom .t{font-family:var(--mono);font-weight:700;font-size:15px;color:#fff}
+
+  /* symptom list — reads like a labelled instrument menu, not glossy cards */
+  .pick{display:grid;gap:8px;padding-bottom:60px}
+  .symptom{display:flex;align-items:center;gap:16px;width:100%;text-align:left;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-left:2px solid transparent;border-radius:var(--radius);padding:16px 18px;transition:border-color var(--ease),background var(--ease)}
+  .symptom:hover{border-color:var(--line);border-left-color:var(--amber);background:#20242b}
+  .symptom:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .symptom .n{font-family:var(--mono);font-weight:700;font-size:12.5px;color:var(--amber);border:1px solid var(--amber-deep);background:transparent;width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .symptom .t{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink)}
   .symptom .d{font-size:13px;color:var(--mute);margin-top:3px}
-  .session{padding-bottom:70px}
-  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-  .topbar .flowtitle{font-family:var(--mono);font-weight:700;font-size:16px;color:#fff}
-  .spine{position:relative;margin-left:6px;padding-left:30px}
-  .spine::before{content:"";position:absolute;left:8px;top:6px;bottom:18px;width:2px;background:var(--line)}
-  .node{position:relative;margin-bottom:15px}
-  .node::before{content:"";position:absolute;left:-30px;top:4px;width:16px;height:16px;border-radius:50%;background:var(--panel);border:2px solid var(--line);transform:translateX(2px)}
-  .node.done::before{background:var(--signal);border-color:var(--signal);box-shadow:0 0 10px rgba(95,227,176,.5)}
-  .node.done.fail::before{background:var(--fail);border-color:var(--fail);box-shadow:0 0 10px rgba(255,111,96,.45)}
-  .node.active::before{border-color:var(--signal);box-shadow:0 0 0 4px rgba(95,227,176,.14)}
+
+  .session{padding-bottom:72px}
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .topbar .flowtitle{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--ink)}
+
+  /* the diagnostic log: a thin ruled gutter, flat SQUARE markers (no glow) */
+  .spine{position:relative;margin-left:5px;padding-left:30px}
+  .spine::before{content:"";position:absolute;left:8px;top:7px;bottom:18px;width:1px;background:var(--line)}
+  .node{position:relative;margin-bottom:16px}
+  .node::before{content:"";position:absolute;left:-30px;top:4px;width:10px;height:10px;border-radius:2px;background:transparent;border:1.5px solid var(--line);transform:translateX(2px)}
+  .node.done::before{background:var(--amber);border-color:var(--amber)}
+  .node.done.fail::before{background:var(--fail);border-color:var(--fail)}
+  .node.active::before{background:var(--bg);border-color:var(--amber)}
   .node .step{font-size:15px;color:var(--ink)}
-  .node .cmd{font-family:var(--mono);font-size:12.5px;color:var(--signal);background:#0b1f19;border:1px solid #1d3a30;border-radius:6px;padding:7px 10px;margin:8px 0;display:inline-block}
+  .node .cmd{font-family:var(--mono);font-size:12.5px;color:#cbc5b8;background:var(--inset);border:1px solid var(--line);border-left:2px solid var(--amber);border-radius:5px;padding:7px 11px;margin:9px 0;display:inline-block}
+  .node .cmd::before{content:"$ ";color:var(--amber)}
   .node .interp{font-size:13px;color:var(--soft);margin:6px 0 0}
-  .node .verdict{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-top:8px;display:inline-block;padding:3px 8px;border-radius:5px}
-  .verdict.pass{background:#0b1f19;color:var(--pass);border:1px solid #1d3a30}
-  .verdict.fail{background:#23110f;color:var(--fail);border:1px solid #4a221d}
-  .answers{display:flex;gap:9px;margin-top:12px}
-  button{font-family:var(--mono);font-size:13px;font-weight:600;border-radius:8px;padding:10px 15px;cursor:pointer;border:1px solid transparent;transition:transform 80ms ease,opacity var(--motion)}
+  .node .verdict{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin-top:9px;display:inline-block;padding:3px 9px;border-radius:4px}
+  .verdict.pass{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-line)}
+  .verdict.fail{background:var(--fail-bg);color:var(--fail);border:1px solid var(--fail-line)}
+
+  .answers{display:flex;gap:9px;margin-top:13px}
+  button{font-family:var(--mono);font-size:13px;font-weight:600;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid transparent;transition:background var(--ease),border-color var(--ease)}
   button:active{transform:translateY(1px)}
-  button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
-  .btn-pass{background:var(--signal);color:#06231a}
-  .btn-fail{background:var(--fail);color:#2a0d0a}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .btn-pass{background:var(--ok);color:#11231a}
+  .btn-pass:hover{background:#9cc098}
+  .btn-fail{background:var(--fail);color:#26120d}
+  .btn-fail:hover{background:#e07a61}
   .btn-ghost{background:transparent;color:var(--soft);border-color:var(--line)}
-  .btn-ghost:hover{border-color:var(--signal);color:var(--ink)}
-  .btn-primary{background:var(--signal);color:#06231a}
-  .conclusion{border-left:3px solid var(--amber);margin-top:8px;background:var(--panel)}
-  .conclusion .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:0 0 4px}
-  .conclusion h3{font-family:var(--mono);font-size:17px;margin:0 0 2px;color:#fff;letter-spacing:-.01em}
-  .conclusion .blk{margin-top:14px}
+  .btn-ghost:hover{border-color:var(--amber);color:var(--ink)}
+  .btn-primary{background:var(--amber);color:#1c1205}
+  .btn-primary:hover{background:#f1b25e}
+
+  /* diagnosis: a bracketed report block, no glow */
+  .conclusion{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);margin-top:10px}
+  .conclusion .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:0 0 6px}
+  .conclusion .lbl::before{content:"> "}
+  .conclusion h3{font-family:var(--mono);font-size:17px;font-weight:700;margin:0 0 2px;color:var(--ink);line-height:1.3}
+  .conclusion .blk{margin-top:15px}
   .conclusion p{margin:0;font-size:14px;color:var(--soft)}
-  .conclusion .blk .h{font-weight:700;color:var(--signal);font-size:11.5px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
-  .enter{opacity:0;transform:translateY(8px);animation:rise var(--motion) forwards}
+  .conclusion .blk .h{font-family:var(--mono);font-weight:700;color:var(--ink);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+  .conclusion .blk:nth-of-type(2) .h{color:var(--ok)}
+
+  .enter{opacity:0;transform:translateY(7px);animation:rise var(--ease) forwards}
   @keyframes rise{to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){.enter{animation:none;opacity:1;transform:none}button{transition:none}}
-  footer{border-top:1px solid var(--line);padding:22px 0 40px;color:var(--mute);font-size:12.5px;display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono)}
+  footer{border-top:1px solid var(--line);padding:24px 0 44px;color:var(--mute);font-size:12.5px;display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono)}
   footer a{color:var(--soft);text-decoration:none;border-bottom:1px solid var(--line)}
-  .src-note{color:var(--signal)}
+  footer a:hover{color:var(--amber);border-color:var(--amber)}
+  .src-note{color:var(--amber)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="mast">
     <div class="eyebrow">
-      <span aria-hidden="true">
-        <svg width="28" height="14" viewBox="0 0 28 14" fill="none">
-          <path d="M0 7 H7 L10 2 L13 12 L16 7 H28" stroke="#5fe3b0" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <span class="mk" aria-hidden="true">
+        <svg width="26" height="12" viewBox="0 0 26 12" fill="none">
+          <path d="M0 6 H6 V2 H12 V10 H18 V6 H26" stroke="#eaa044" stroke-width="1.7" fill="none" stroke-linejoin="round"/>
         </svg>
       </span>
-      net-doctor · network ops
+      net-doctor · network diagnostics
     </div>
     <h1>One check at a time, in the right order.</h1>
     <p class="lede">Network faults are rarely one problem. This walks the layered method a technician uses: <b>link, IP, gateway, DNS, then the app</b>, stopping at the first thing that is actually broken and telling you the likely cause, the fix, and when to escalate.</p>
+    <p class="meta">rule-based · 4 diagnostic flows · runs in your browser</p>
   </header>
 
   <main id="app"></main>
