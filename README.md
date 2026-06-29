@@ -1,5 +1,7 @@
 # net-doctor
 
+**Live demo: https://net-doctor-nu.vercel.app/**
+
 A structured network troubleshooting assistant for first-line support.
 
 It is not a chatbot. It is a decision tree that walks the same layered method I
