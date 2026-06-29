@@ -77,6 +77,15 @@
   .precheck .seg{margin:0}
   .banner{background:var(--fail-bg);border:1px solid var(--fail-line);border-left:3px solid var(--fail);border-radius:var(--radius);padding:13px 16px;margin:0 0 18px;color:var(--ink);font-size:14px}
   .banner b{color:var(--fail)}
+  .aibox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;margin:0 0 18px}
+  .aibox .albl{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin:0 0 9px}
+  .aibox .arow{display:flex;gap:9px;flex-wrap:wrap}
+  .aibox input{flex:1;min-width:220px;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:9px 11px}
+  .aibox input:focus{outline:2px solid var(--amber);outline-offset:2px;border-color:transparent}
+  .airesult{margin-top:11px;font-size:14px;color:var(--soft);line-height:1.55}
+  .airesult .ex{color:var(--ink)}
+  .airesult .lyr{font-family:var(--mono);font-size:12px;color:var(--amber);margin-top:7px;display:inline-block;border:1px solid var(--amber-deep);border-radius:5px;padding:3px 9px}
+  .airesult .note{color:var(--mute);font-size:13px}
 
   /* symptom list */
   .pick{display:grid;gap:8px}
@@ -318,10 +327,25 @@ function diagnoseView(){
         </div>
       </div>
       ${banner}
+      <div class="aibox">
+        <p class="albl">AI assist · optional</p>
+        <div class="arow"><input id="errin" placeholder="Paste an error code or message, e.g. DNS_PROBE_FINISHED_NXDOMAIN" /><button class="btn btn-primary" id="explain">Explain</button></div>
+        <div class="airesult" id="airesult"></div>
+      </div>
       <div class="pick">${pick}</div>
     </div>`;
     $("#seg-multi").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.multi = b.dataset.multi==="yes"; render(); });
     main.querySelectorAll(".symptom").forEach(b=> b.addEventListener("click", ()=>{ state.key=b.dataset.key; state.flow=FLOWS[b.dataset.key]; state.stepId=FLOWS[b.dataset.key].start; state.history=[]; render(); }));
+    const ex=$("#explain"), errin=$("#errin"), ar=$("#airesult");
+    if(ex){
+      const go=async()=>{ const v=errin.value.trim(); if(!v)return; ar.innerHTML="Analysing the error…";
+        try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({input:v})});
+          if(!r.ok) throw 0; const d=await r.json();
+          ar.innerHTML=`<span class="ex">${esc(d.explanation||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"");
+        }catch(e){ ar.innerHTML=`<span class="note">AI assist is not enabled on this deploy yet (set NVIDIA_API_KEY in Vercel). The rule-based diagnostics below work without it.</span>`; } };
+      ex.addEventListener("click", go);
+      errin.addEventListener("keydown", e=>{ if(e.key==="Enter") go(); });
+    }
     return;
   }
   const flow = state.flow;

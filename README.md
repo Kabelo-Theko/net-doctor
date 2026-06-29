@@ -94,6 +94,21 @@ for the core branching logic; the web app layers the OS/environment/escalation
 features on top. A `Dockerfile`, `render.yaml` and `vercel.json` are included for
 a free deploy.
 
+## Optional AI assist
+
+The Diagnose tab has an optional "AI assist" box: paste an error code or message
+(`DNS_PROBE_FINISHED_NXDOMAIN`, "Limited or no connectivity", ...) and it returns
+a plain-English explanation plus the layer to start at. It is powered by a tiny
+serverless function (`api/ai.js`) that proxies to an LLM.
+
+- The API key lives **only** in the `NVIDIA_API_KEY` environment variable, set in
+  the Vercel project settings — never in the repo or the browser.
+- Without that variable the box fails gracefully and the rule-based diagnostics
+  work exactly as before, so the static demo is unaffected.
+
+To enable it: Vercel project → Settings → Environment Variables → add
+`NVIDIA_API_KEY` → redeploy.
+
 ## Running the tests
 
 ```bash
