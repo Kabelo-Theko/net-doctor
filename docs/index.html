@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>net-doctor — structured network troubleshooting</title>
+<title>net-doctor: structured network troubleshooting</title>
 <meta name="description" content="A guided, layered diagnostic for first-line network faults, with OS-aware commands and a copyable escalation card." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Chivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   /*
-    net-doctor v3 — DIAGNOSTIC INSTRUMENT (multi-view).
+    net-doctor v3: DIAGNOSTIC INSTRUMENT (multi-view).
     Warm-shifted off-black, one amber signal colour (outside the blue/indigo slop
     band), flat square markers, no glow, no decorative grid. State shown by colour
     AND text label. Nav collapses to a hamburger on narrow screens.
@@ -138,6 +138,31 @@
   .conclusion .h.fix{color:var(--ok)}
   .conclusion .h.env{color:var(--amber)}
   .concl-actions{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
+  .dual{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:9px 0}
+  @media (max-width:620px){.dual{grid-template-columns:1fr}}
+  .pane{background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:14px;color:var(--ink)}
+  .pane .role{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0 0 5px;display:block}
+  .pane.tech{border-left:2px solid var(--amber)}
+  .pane.mgr{border-left:2px solid var(--ok)}
+  .pane .pcmd{font-family:var(--mono);font-size:12.5px;color:#cbc5b8}
+  .pane .pcmd::before{content:"$ ";color:var(--amber)}
+  .receipt{font-family:var(--mono);font-size:10.5px;color:var(--mute);margin-top:9px;border-top:1px solid var(--line-soft);padding-top:7px;line-height:1.5}
+  .recbox{width:100%;font-family:var(--sans);font-size:14px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:9px 11px;margin-top:6px;min-height:58px;resize:vertical}
+  .recbox:focus{outline:2px solid var(--amber);outline-offset:2px;border-color:transparent}
+  #record{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #record,#record *{visibility:visible}
+    #record{display:block;position:absolute;left:0;top:0;width:100%;background:#fff;color:#111;padding:14px 5%}
+    .topbar,footer,.mast{display:none!important}
+  }
+  #record{background:#fff;color:#111}
+  #record h2{font-family:var(--mono);font-size:18px;margin:0 0 6px;color:#111}
+  #record .rrow{font-family:var(--mono);font-size:12px;color:#222;margin:3px 0}
+  #record table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+  #record th,#record td{border:1px solid #bbb;padding:6px 8px;text-align:left;color:#111}
+  #record .sig{margin-top:26px;display:flex;gap:40px;flex-wrap:wrap}
+  #record .sig div{flex:1;min-width:170px;border-top:1px solid #333;padding-top:5px;font-size:12px;color:#222}
 
   /* escalation card */
   .escwrap{margin-top:4px}
@@ -199,6 +224,12 @@
             <button data-env="office" class="on">Office</button>
             <button data-env="home">Home</button>
             <button data-env="vpn">VPN</button>
+            <button data-env="pos">Store POS</button>
+          </div>
+          <p class="lbl">Field mode</p>
+          <div class="seg" id="seg-field">
+            <button data-field="off" class="on">Off</button>
+            <button data-field="on">Dual pane</button>
           </div>
         </div>
       </span>
@@ -215,6 +246,7 @@
   </header>
 
   <main id="main"></main>
+  <div id="record"></div>
 
   <footer>
     <span class="src-note">Rule-based · runs in your browser</span>
@@ -235,7 +267,7 @@ const OSCMD = {
   renew:    {win:"ipconfig /release & ipconfig /renew", mac:"sudo ipconfig set en0 DHCP", linux:"sudo dhclient -r && sudo dhclient"},
 };
 const OSLABEL = {win:"Windows", mac:"macOS", linux:"Linux"};
-const ENVLABEL = {office:"Office", home:"Home", vpn:"VPN"};
+const ENVLABEL = {office:"Office", home:"Home", vpn:"VPN", pos:"Store POS"};
 
 /* environment-specific cause hints, keyed by conclusion id */
 const ENV_HINT = {
@@ -295,14 +327,57 @@ const FLOWS = {
     "fix-ap":{kind:"conclusion",cause:"Several devices drop in the same area, so the access point or local interference is the cause.",fix:"Check the AP for overload or a recent change, look for interference, and reboot the AP out of trading hours.",escalate:"Escalate persistent area-wide drops to wireless support."},
     "fix-adapter":{kind:"conclusion",cause:"Only this PC drops, so the wireless adapter, its driver, or power-saving is the likely cause.",fix:"Update the wireless driver, and turn off 'allow the computer to turn off this device to save power' in the adapter's power management.",escalate:"If it still drops after a driver update on a known-good AP, escalate as possible hardware."}
   }},
+  "store-pos-down":{title:"Store POS or card machine not working",description:"A till, card machine or receipt printer at a store has stopped working.",start:"pos-power",steps:{
+    "pos-power":{kind:"check",text:"Is the POS terminal powered on and at the sale screen?",field:"Look at the till screen. Is it on and showing the normal sale screen, not black or stuck on a logo?",command:"Confirm power lead and that the screen has reached the sale screen.",interpret:"A dead or stuck screen is a power or device fault, before any network step.",on_fail:"fix-pos-power",on_pass:"pos-printer"},
+    "fix-pos-power":{kind:"conclusion",cause:"The POS terminal is not powering up or not booting to the sale screen.",fix:"Check the power lead and wall socket, hold the power button to restart, and confirm the screen is not just dimmed. Try a known-good power point.",escalate:"If it will not boot after a restart on good power, escalate as a hardware fault and switch to the backup till if there is one."},
+    "pos-printer":{kind:"check",text:"Is the receipt printer online, with a steady light and paper loaded?",field:"Look at the receipt printer. Is the light steady green, not flashing red, and is there paper in it?",command:"Check the printer status light and paper. Note the printer IP if it is shown.",interpret:"A flashing red light usually means no paper, a cover open, or the printer is offline on the network.",on_fail:"fix-pos-printer",on_pass:"pos-pay"},
+    "fix-pos-printer":{kind:"conclusion",cause:"The receipt printer is offline or out of paper.",fix:"Reload paper, close the cover, and power-cycle the printer. If it prints a self-test but not receipts, recheck its IP against the till's printer setting.",escalate:"If the printer keeps changing IP, reserve its address on the router and escalate to whoever manages the till setup."},
+    "pos-pay":{kind:"check",text:"Can the card machine reach the payment gateway?",field:"On the card machine, try a test or balance check. Does it connect, or does it say no line or no connection?",command:"ping <payment-gateway-host>   (or run the terminal's built-in connection test)",interpret:"No connection on the card machine while the till works points at the payment line or gateway, not the till.",on_fail:"fix-pos-pay",on_pass:"pos-net"},
+    "fix-pos-pay":{kind:"conclusion",cause:"The card machine cannot reach the payment gateway.",fix:"Restart the card machine, check its network or SIM connection, and confirm the gateway host is reachable. Switch to the backup terminal if one is approved.",escalate:"If the gateway is unreachable for every terminal, escalate to the payments provider with the merchant ID and the start time."},
+    "pos-net":{kind:"check",text:"Can the till reach the store gateway (the local router)?",oscmd:"ping_gw",field:"Ask whether other tills and the back office are also offline, or just this one.",interpret:"Timeouts to the gateway mean the store network path is down, so treat it as a site network fault.",on_fail:"fix-pos-net",on_pass:"fix-pos-app"},
+    "fix-pos-net":{kind:"conclusion",cause:"The till cannot reach the store gateway, so this is a store network fault, not the till.",fix:"Check the store switch and router for power and link lights, reseat the till's network cable, and confirm the till is on the right VLAN.",escalate:"If the gateway is down for the whole store, escalate to network support and open a major incident for the site."},
+    "fix-pos-app":{kind:"conclusion",cause:"Power, printer, payment line and network are all up, so the POS application itself is the likely fault.",fix:"Restart the POS application, confirm it can sign in to its back end, and check whether other tills at the store show the same error.",escalate:"If every till shows the same application error, escalate to the POS vendor with the store and the exact message."}
+  }},
 };
 
 /* ---------- state ---------- */
-const state = { view:"diagnose", os:"win", env:"office", multi:false, key:null, flow:null, stepId:null, history:[], lastResult:null };
+const state = { view:"diagnose", os:"win", env:"office", multi:false, store:"", symptom:"", field:false, key:null, flow:null, stepId:null, history:[], lastResult:null };
 const $ = s => document.querySelector(s);
 const main = $("#main");
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 const cmdFor = step => step.oscmd ? OSCMD[step.oscmd][state.os] : (step.command || "");
+
+/* ---------- cross-app links, AI receipt, dual-pane and incident record ---------- */
+const LINKS = { resolveNotes:"https://resolve-notes-q83m.vercel.app/", ticketTriage:"https://ticket-triage-nu.vercel.app/" };
+const aiModelLabel = () => { const s=$("#aimodel"); return s?s.options[s.selectedIndex].text.replace(/\s*\(.*\)\s*/,"").trim():"AI"; };
+const aiReceipt = task => `<div class="receipt">Reasoning receipt: model ${esc(aiModelLabel())} · task ${esc(task)} · ${esc(new Date().toLocaleString("en-GB"))}</div>`;
+function syncSeg(segId, ds, val){ const seg=$("#"+segId); if(!seg) return; seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset[ds]===val)); }
+function stepBody(step){
+  const cmd = cmdFor(step);
+  if(state.field){
+    const mgr = step.field || step.text;
+    const tech = cmd || "Physical check, no command";
+    return `<div class="dual"><div class="pane mgr"><span class="role">For the store manager</span><span>${esc(mgr)}</span></div><div class="pane tech"><span class="role">For the technician</span><span class="pcmd">${esc(tech)}</span></div></div>`;
+  }
+  return cmd ? `<div class="cmd">${esc(cmd)}</div>` : "";
+}
+function printRecord(cur, flow){
+  const rec=$("#record"); if(!rec) return;
+  const res = ($("#restext") && $("#restext").value.trim()) || "";
+  const now = new Date().toLocaleString("en-GB");
+  const checks = state.history.map(h=>`<tr><td>${h.passed?"OK":"FAIL"}</td><td>${esc(flow.steps[h.id].text)}</td></tr>`).join("");
+  rec.innerHTML = `<h2>Incident record</h2>
+    <div class="rrow">Generated: ${esc(now)}</div>
+    <div class="rrow">Store: ${esc(state.store||"-")} · OS: ${esc(OSLABEL[state.os])} · Environment: ${esc(ENVLABEL[state.env])}</div>
+    <div class="rrow">Symptom: ${esc(flow.title)}</div>
+    <table><thead><tr><th>Result</th><th>Check completed</th></tr></thead><tbody>${checks}</tbody></table>
+    <div class="rrow"><b>Probable cause:</b> ${esc(cur.cause)}</div>
+    <div class="rrow"><b>Fix:</b> ${esc(cur.fix)}</div>
+    <div class="rrow"><b>Escalation point:</b> ${esc(cur.escalate)}</div>
+    <div class="rrow"><b>Resolution:</b> ${esc(res||"(to be completed)")}</div>
+    <div class="sig"><div>Logged by (technician), date</div><div>Verified by, date</div></div>`;
+  window.print();
+}
 
 /* ---------- nav ---------- */
 function setView(v){
@@ -318,7 +393,12 @@ document.addEventListener("click", e=>{ if(!e.target.closest(".settings")) $("#s
 $("#seg-os").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.os=b.dataset.os; $("#seg-os").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); updateCtx(); render(); });
 $("#seg-env").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.env=b.dataset.env; $("#seg-env").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); updateCtx(); render(); });
 
-function updateCtx(){ $("#ctx").innerHTML = `context: OS <b>${OSLABEL[state.os]}</b> · environment <b>${ENVLABEL[state.env]}</b> · 4 diagnostic flows`; }
+function updateCtx(){
+  const bits = [`OS <b>${OSLABEL[state.os]}</b>`, `environment <b>${ENVLABEL[state.env]}</b>`];
+  if(state.store) bits.push(`store <b>${esc(state.store)}</b>`);
+  if(state.field) bits.push(`<b>field mode</b>`);
+  $("#ctx").innerHTML = "context: " + bits.join(" · ") + ` · ${Object.keys(FLOWS).length} diagnostic flows`;
+}
 
 /* ---------- diagnose view ---------- */
 function diagnoseView(){
@@ -354,7 +434,7 @@ function diagnoseView(){
       const go=async()=>{ const v=errin.value.trim(); if(!v)return; ar.innerHTML="Analysing the error…";
         try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({input:v,model:($("#aimodel")?.value||"flash")})});
           if(!r.ok) throw 0; const d=await r.json();
-          ar.innerHTML=`<span class="ex">${esc(d.explanation||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"");
+          ar.innerHTML=`<span class="ex">${esc(d.explanation||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"")+aiReceipt("explain");
         }catch(e){ ar.innerHTML=`<span class="note">AI assist is not enabled on this deploy yet (set NVIDIA_API_KEY in Vercel). The rule-based diagnostics below work without it.</span>`; } };
       ex.addEventListener("click", go);
       errin.addEventListener("keydown", e=>{ if(e.key==="Enter") go(); });
@@ -364,7 +444,7 @@ function diagnoseView(){
       const go=async()=>{ const v=routein.value.trim(); if(!v)return; rr.innerHTML="Routing…";
         try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task:"route",input:v,model:($("#aimodel")?.value||"flash")})});
           if(!r.ok) throw 0; const d=await r.json(); const f=FLOWS[d.flow];
-          rr.innerHTML=`<span class="ex">${esc(d.plan||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"")+(f?`<br><button class="btn btn-primary" id="startrouted" style="margin-top:10px">Start: ${esc(f.title)}</button>`:"");
+          rr.innerHTML=`<span class="ex">${esc(d.plan||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"")+(f?`<br><button class="btn btn-primary" id="startrouted" style="margin-top:10px">Start: ${esc(f.title)}</button>`:"")+aiReceipt("route");
           const sb=$("#startrouted"); if(sb)sb.addEventListener("click",()=>{ state.key=d.flow; state.flow=f; state.stepId=f.start; state.history=[]; render(); });
         }catch(e){ rr.innerHTML=`<span class="note">AI router needs the backend (set NVIDIA_API_KEY). Pick a symptom below instead.</span>`; } };
       rt.addEventListener("click", go);
@@ -373,11 +453,12 @@ function diagnoseView(){
     return;
   }
   const flow = state.flow;
-  const nodes = state.history.map(h=>{ const s=flow.steps[h.id]; return `<div class="node done ${h.passed?'':'fail'}"><div class="step">${esc(s.text)}</div>${cmdFor(s)?`<div class="cmd">${esc(cmdFor(s))}</div>`:""}<div><span class="verdict ${h.passed?'pass':'fail'}">${h.passed?'looked healthy':'not right'}</span></div></div>`; }).join("");
+  const nodes = state.history.map(h=>{ const s=flow.steps[h.id]; const body = state.field ? stepBody(s) : `<div class="step">${esc(s.text)}</div>${cmdFor(s)?`<div class="cmd">${esc(cmdFor(s))}</div>`:""}`; return `<div class="node done ${h.passed?'':'fail'}">${body}<div><span class="verdict ${h.passed?'pass':'fail'}">${h.passed?'looked healthy':'not right'}</span></div></div>`; }).join("");
   const cur = flow.steps[state.stepId];
   let active="";
   if(cur.kind==="check"){
-    active = `<div class="node active enter"><div class="step">${esc(cur.text)}</div>${cmdFor(cur)?`<div class="cmd">${esc(cmdFor(cur))}</div>`:""}${cur.interpret?`<div class="interp">${esc(cur.interpret)}</div>`:""}<div class="answers"><button class="btn btn-pass" data-a="pass">Passed / looks healthy</button><button class="btn btn-fail" data-a="fail">Failed / not right</button></div></div>`;
+    const body = state.field ? stepBody(cur) : `<div class="step">${esc(cur.text)}</div>${cmdFor(cur)?`<div class="cmd">${esc(cmdFor(cur))}</div>`:""}`;
+    active = `<div class="node active enter">${body}${cur.interpret?`<div class="interp">${esc(cur.interpret)}</div>`:""}<div class="answers"><button class="btn btn-pass" data-a="pass">Passed / looks healthy</button><button class="btn btn-fail" data-a="fail">Failed / not right</button></div></div>`;
   } else {
     const hint = (ENV_HINT[state.stepId]||{})[state.env] || "";
     active = `<div class="conclusion enter">
@@ -386,9 +467,12 @@ function diagnoseView(){
       <div class="blk"><div class="h fix">Fix</div><p>${esc(cur.fix)}</p></div>
       ${hint?`<div class="blk"><div class="h env">In this environment (${ENVLABEL[state.env]})</div><p>${esc(hint)}</p></div>`:""}
       <div class="blk"><div class="h">When to escalate</div><p>${esc(cur.escalate)}</p></div>
+      <div class="blk"><div class="h">Resolution (for the record)</div><textarea class="recbox" id="restext" placeholder="What finally fixed it. Optional, used on the incident record."></textarea></div>
       <div class="concl-actions">
         <button class="btn btn-primary" id="mkcard">Generate escalation card</button>
         <button class="btn btn-ghost" id="ainote">AI escalation note</button>
+        <button class="btn btn-ghost" id="resnote">Write resolution note</button>
+        <button class="btn btn-ghost" id="prec">Print incident record</button>
         <button class="btn btn-ghost" id="restart">Start over</button>
       </div>
       <div class="airesult" id="ainoteout" style="margin-top:14px"></div>
@@ -403,12 +487,14 @@ function diagnoseView(){
   const back=$("#back"); if(back) back.addEventListener("click", resetFlow);
   const rs=$("#restart"); if(rs) rs.addEventListener("click", resetFlow);
   const mk=$("#mkcard"); if(mk) mk.addEventListener("click", ()=> setView("escalation"));
+  const rn=$("#resnote"); if(rn) rn.addEventListener("click", ()=>{ const tag=({"store-pos-down":"pos","site-down-whole-office":"network","one-pc-no-internet":"network","cant-reach-internal-vpn":"vpn","wifi-drops":"wifi"})[state.key]||""; const q=encodeURIComponent((state.store?state.store+" ":"")+(tag||flow.title)); window.open(LINKS.resolveNotes+"?q="+q, "_blank", "noopener"); });
+  const pr=$("#prec"); if(pr) pr.addEventListener("click", ()=> printRecord(cur, flow));
   const an=$("#ainote"); if(an) an.addEventListener("click", async ()=>{
     const ao=$("#ainoteout"); an.textContent="Writing…";
     const sess={title:flow.title,steps:state.history.map(h=>({text:flow.steps[h.id].text,passed:h.passed})),cause:cur.cause,fix:cur.fix,escalate:cur.escalate};
     try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task:"narrative",session:sess,model:($("#aimodel")?.value||"flash")})});
       if(!r.ok) throw 0; const d=await r.json();
-      ao.innerHTML=`<div class="cmd" style="display:block;white-space:pre-wrap;border-left-color:var(--amber)">${esc(d.note||"")}</div><button class="btn btn-ghost" id="cpnote" style="margin-top:8px">Copy note</button>`;
+      ao.innerHTML=`<div class="cmd" style="display:block;white-space:pre-wrap;border-left-color:var(--amber)">${esc(d.note||"")}</div><button class="btn btn-ghost" id="cpnote" style="margin-top:8px">Copy note</button>`+aiReceipt("narrative");
       an.textContent="AI escalation note";
       const cp=$("#cpnote"); if(cp)cp.addEventListener("click",async()=>{await navigator.clipboard.writeText(d.note||"");cp.textContent="Copied";setTimeout(()=>cp.textContent="Copy note",1400);});
     }catch(e){ an.textContent="AI escalation note"; ao.innerHTML=`<span class="note" style="color:var(--mute);font-size:13px">Needs NVIDIA_API_KEY. The copyable card works without AI.</span>`; }
@@ -422,10 +508,11 @@ function escalationText(r){
   const now = new Date();
   const hh = now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
   const lines = [];
-  lines.push("ESCALATION CARD — net-doctor");
+  lines.push("ESCALATION CARD: net-doctor");
   lines.push(`Time: ${hh}  |  Environment: ${ENVLABEL[state.env]}  |  OS: ${OSLABEL[state.os]}`);
+  if(state.store) lines.push(`Store: ${state.store}`);
   lines.push(`Symptom: ${r.title}`);
-  if(state.multi) lines.push("Scope: MULTIPLE USERS — possible major incident");
+  if(state.multi) lines.push("Scope: MULTIPLE USERS, possible major incident");
   lines.push("");
   lines.push("Checks completed:");
   r.history.forEach(h=>{ const s=r.flowSteps[h.id]; lines.push(`  [${h.passed?"OK":"FAIL"}] ${s.text}`); });
@@ -468,7 +555,7 @@ function referenceView(){
       <li><span class="ln">2 · IP</span><span>Did DHCP hand out a real address? A <b>169.254.x.x</b> address means DHCP failed.</span></li>
       <li><span class="ln">3 · Gateway</span><span>Can you reach the local router? <b>No gateway, no LAN.</b></span></li>
       <li><span class="ln">4 · DNS</span><span>Do names resolve to addresses? Internet by IP but not by name <b>points at DNS.</b></span></li>
-      <li><span class="ln">5 · App</span><span>Link, IP, gateway and DNS all fine? The fault is <b>above the network</b> — proxy, firewall, or the app.</span></li>
+      <li><span class="ln">5 · App</span><span>Link, IP, gateway and DNS all fine? The fault is <b>above the network</b>: proxy, firewall, or the app.</span></li>
     </ul>
     <h2>Command cheat sheet</h2>
     <table class="cheat">
@@ -483,6 +570,21 @@ function render(){
   else if(state.view==="escalation") escalationView();
   else referenceView();
 }
+$("#seg-field").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.field=b.dataset.field==="on"; $("#seg-field").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); render(); });
+(function initFromURL(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const os=(p.get("os")||"").toLowerCase(); const om={win:"win",windows:"win",mac:"mac",macos:"mac",osx:"mac",linux:"linux"}[os]; if(om) state.os=om;
+    const env=(p.get("env")||"").toLowerCase(); if(["office","home","vpn","pos"].includes(env)) state.env=env;
+    if(["1","true","on","yes"].includes((p.get("field")||"").toLowerCase())) state.field=true;
+    const store=p.get("store"); if(store) state.store=store.slice(0,60);
+    const sym=(p.get("symptom")||"").toLowerCase(); if(sym){ state.symptom=sym;
+      const map=[[/pos|point of sale|till|card|eftpos|receipt/,"store-pos-down"],[/wifi|wireless/,"wifi-drops"],[/vpn|sharepoint|intranet/,"cant-reach-internal-vpn"],[/site|whole|outage|everyone/,"site-down-whole-office"],[/dns|gateway|internet|network|ip/,"one-pc-no-internet"]];
+      for(const [re,key] of map){ if(re.test(sym) && FLOWS[key]){ state.key=key; state.flow=FLOWS[key]; state.stepId=FLOWS[key].start; state.history=[]; break; } }
+    }
+  }catch(e){}
+  syncSeg("seg-os","os",state.os); syncSeg("seg-env","env",state.env); syncSeg("seg-field","field",state.field?"on":"off");
+})();
 updateCtx();
 render();
 </script>
