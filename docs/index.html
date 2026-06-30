@@ -82,6 +82,8 @@
   .aibox .arow{display:flex;gap:9px;flex-wrap:wrap}
   .aibox input{flex:1;min-width:220px;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:9px 11px}
   .aibox input:focus{outline:2px solid var(--amber);outline-offset:2px;border-color:transparent}
+  .aibox select{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:9px 10px}
+  .aibox select:focus{outline:2px solid var(--amber);outline-offset:2px}
   .airesult{margin-top:11px;font-size:14px;color:var(--soft);line-height:1.55}
   .airesult .ex{color:var(--ink)}
   .airesult .lyr{font-family:var(--mono);font-size:12px;color:var(--amber);margin-top:7px;display:inline-block;border:1px solid var(--amber-deep);border-radius:5px;padding:3px 9px}
@@ -329,7 +331,7 @@ function diagnoseView(){
       ${banner}
       <div class="aibox">
         <p class="albl">AI assist · optional</p>
-        <div class="arow"><input id="errin" placeholder="Paste an error code or message, e.g. DNS_PROBE_FINISHED_NXDOMAIN" /><button class="btn btn-primary" id="explain">Explain</button></div>
+        <div class="arow"><input id="errin" placeholder="Paste an error code or message, e.g. DNS_PROBE_FINISHED_NXDOMAIN" /><select id="aimodel" title="AI model"><option value="flash">DeepSeek Flash</option><option value="pro">DeepSeek Pro</option><option value="minimax">MiniMax M3</option></select><button class="btn btn-primary" id="explain">Explain</button></div>
         <div class="airesult" id="airesult"></div>
       </div>
       <div class="pick">${pick}</div>
@@ -339,7 +341,7 @@ function diagnoseView(){
     const ex=$("#explain"), errin=$("#errin"), ar=$("#airesult");
     if(ex){
       const go=async()=>{ const v=errin.value.trim(); if(!v)return; ar.innerHTML="Analysing the error…";
-        try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({input:v})});
+        try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({input:v,model:($("#aimodel")?.value||"flash")})});
           if(!r.ok) throw 0; const d=await r.json();
           ar.innerHTML=`<span class="ex">${esc(d.explanation||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"");
         }catch(e){ ar.innerHTML=`<span class="note">AI assist is not enabled on this deploy yet (set NVIDIA_API_KEY in Vercel). The rule-based diagnostics below work without it.</span>`; } };
