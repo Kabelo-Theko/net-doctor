@@ -1,101 +1,97 @@
 /* ════════════════════════════════════════════════════════════════════
-   NET-DOCTOR · "BENCH OSCILLOSCOPE" DESIGN SYSTEM — TOKENS
+   NET-DOCTOR v2 · "CALM FIELD GUIDE" DESIGN SYSTEM — TOKENS
    Project: net-doctor · github.com/Kabelo-Theko/net-doctor
-   Persona: a bench scope for network faults — phosphor trace, graticule,
-   channel buttons, trigger verdicts.
-   Themes on html[data-theme]: screen (CRT, default) · manual (paper).
-   Measured pairs: accessibility.md. Glow budget ≤ .14 alpha.
+   Persona: a steady hand at 2am — warm obsidian, bone ink, one aqua
+   pulse. Probe one layer at a time; stop at the first broken one.
+   Themes on html[data-theme]: field (warm dark, default) · bone (light).
+   Type: Clash Display + General Sans (Fontshare) · Red Hat Mono
+   (commands only). Measured pairs: accessibility.md.
    ════════════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════════
-   NET-DOCTOR · "BENCH OSCILLOSCOPE" — the network fault on a scope.
-   Phosphor-on-CRT screen, graticule spine, channel-button nav,
-   trigger verdicts. Probe one layer at a time; stop at the first
-   broken one.
-   Themes: screen (CRT, default) · manual (paper service-manual)
+   NET-DOCTOR v2 · "CALM FIELD GUIDE" — a steady hand at 2am.
+   Warm obsidian, bone ink, one aqua pulse. Probe one layer at a
+   time; stop at the first broken one.
+   Themes: field (warm dark, default) · bone (warm light)
    ════════════════════════════════════════════════════════════════ */
 :root{
-  --font-scope:"Azeret Mono",ui-monospace,monospace;   /* readouts + data */
-  --font-text:"Schibsted Grotesk",system-ui,sans-serif; /* explanations   */
-  --text-xs:.71875rem;--text-sm:.8125rem;--text-base:.9375rem;--text-md:1.0625rem;
-  --text-lg:1.1875rem;--text-xl:1.5rem;
-  --text-display:clamp(1.6rem,1.1rem + 2.4vw,2.6rem);
+  --font-display:"Clash Display","General Sans",sans-serif;
+  --font-text:"General Sans",system-ui,sans-serif;
+  --font-mono:"Red Hat Mono",ui-monospace,monospace;   /* commands + ids only */
+  --text-xs:.75rem;--text-sm:.875rem;--text-base:.9375rem;--text-md:1.0625rem;
+  --text-lg:1.25rem;--text-xl:1.625rem;
+  --text-h2:clamp(1.5rem,1.2rem + 1.2vw,2rem);
+  --text-hero:clamp(2.2rem,1.5rem + 3.4vw,3.9rem);
   --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;
   --space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;--space-16:64px;
-  --radius-xs:3px;--radius-sm:6px;--radius-md:10px;
-  --motion-micro:110ms;--motion-small:190ms;--motion-large:280ms;--motion-page:380ms;
+  --radius-sm:10px;--radius-md:14px;--radius-lg:20px;--radius-xl:26px;--radius-pill:999px;
+  --motion-micro:130ms;--motion-small:210ms;--motion-large:300ms;--motion-page:400ms;
   --ease-standard:cubic-bezier(.2,0,0,1);
-  --ease-trace:cubic-bezier(.3,.7,.1,1);
-  --bench-max:940px;
+  --ease-spring:cubic-bezier(.34,1.26,.5,1);
+  --ease-emphasized:cubic-bezier(.05,.7,.1,1);
+  --rail-w:216px;
+  --content-max:880px;
 }
-:root,html[data-theme="screen"]{
+:root,html[data-theme="field"]{
   color-scheme:dark;
-  --canvas-base:#0B110D;         /* CRT housing black-green   */
-  --canvas-screen:#0D1710;       /* the phosphor screen       */
-  --canvas-panel:#131B15;        /* bezel panels              */
-  --canvas-inset:#080D0A;        /* command wells             */
-  --canvas-overlay:#1A241C;
-  --text-max:#EAF5EC;            /* 15.5:1 on base            */
-  --text-primary:#D2E2D5;        /* 12.2:1                    */
-  --text-secondary:#96AB9B;      /* 6.6:1                     */
-  --text-tertiary:#7E937F;       /* 5.0:1 (base only)         */
-  --text-disabled:#48584B;
-  --phos:#5BEB9E;                /* phosphor green · 10.5:1   */
-  --phos-dim:#38B978;
-  --phos-ink:#04140B;            /* on solid phosphor · 12.9:1 */
-  --phos-subtle:rgba(91,235,158,.09);
-  --phos-border:rgba(91,235,158,.4);
-  --phos-glow:0 0 14px rgba(91,235,158,.14);
-  --fail:#FF7A66;                /* fail trace · 7.5:1        */
-  --fail-ink:#230703;
-  --fail-subtle:rgba(255,122,102,.10);
-  --fail-border:rgba(255,122,102,.42);
-  --cursor:#F5C86B;              /* amber cursor/warn · 10.4:1 */
-  --cursor-subtle:rgba(245,200,107,.10);
-  --graticule:rgba(91,235,158,.07);
-  --graticule-strong:rgba(91,235,158,.14);
-  --border-default:rgba(210,226,213,.10);
-  --border-strong:rgba(210,226,213,.22);
-  --shadow-1:0 1px 3px rgba(0,0,0,.45);
-  --shadow-2:0 10px 26px rgba(0,0,0,.55);
-  --inner-edge:inset 0 0 0 1px rgba(210,226,213,.04);
-  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--phos);
-  --scrim:rgba(2,6,3,.72);
-  --scanline:rgba(0,0,0,.14);
+  --canvas-base:#131110;        /* warm obsidian            */
+  --canvas-surface:#1C1917;     /* cards                    */
+  --canvas-raised:#242019;      /* hover / raised           */
+  --canvas-inset:#0D0B0A;       /* command wells            */
+  --canvas-overlay:#2A251F;
+  --text-max:#F7F4EE;
+  --text-primary:#F3EFE9;       /* bone · 16.4:1            */
+  --text-secondary:#B5AC9F;     /* 7.8:1 on surface         */
+  --text-tertiary:#9A9184;      /* 5.6:1 on base            */
+  --text-disabled:#57514A;
+  --accent:#3ECFBB;             /* the pulse · 9.7:1        */
+  --accent-hover:#5FDCC9;
+  --accent-pressed:#2FB8A5;
+  --accent-text:#8AE0D2;        /* 12.3:1                   */
+  --accent-subtle:rgba(62,207,187,.10);
+  --accent-border:rgba(62,207,187,.38);
+  --on-accent:#062A24;          /* 8.0:1 on aqua            */
+  --pass:#5BC98A;   --pass-ink:#0A2C1A;  --pass-text:#7ED8A3; --pass-subtle:rgba(91,201,138,.10);
+  --fail:#F08A7B;   --fail-ink:#2B0B06;  --fail-text:#F5A99D; --fail-subtle:rgba(240,138,123,.10);
+  --amber:#E8C87D;  --amber-text:#E8C87D; --amber-subtle:rgba(232,200,125,.10);
+  --border-default:rgba(243,239,233,.09);
+  --border-strong:rgba(243,239,233,.20);
+  --shadow-1:0 1px 3px rgba(0,0,0,.4);
+  --shadow-2:0 12px 32px -8px rgba(0,0,0,.55);
+  --ring-accent:0 0 0 1.5px var(--accent-border);
+  --cmd-ink:#8AE0D2;           /* 12.9:1 on inset          */
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--accent);
+  --scrim:rgba(4,3,2,.72);
 }
-html[data-theme="manual"]{
+html[data-theme="bone"]{
   color-scheme:light;
-  --canvas-base:#F4F3EC;         /* service-manual paper      */
-  --canvas-screen:#EDF3EA;       /* schematic panel           */
-  --canvas-panel:#FCFBF6;
-  --canvas-inset:#E7EAE0;
-  --canvas-overlay:#FCFBF6;
-  --text-max:#161B15;            /* 15.5:1                    */
-  --text-primary:#28312A;        /* 11.6:1                    */
-  --text-secondary:#525F53;      /* 6.3:1                     */
-  --text-tertiary:#67755F;       /* 4.6:1 (base only)         */
-  --text-disabled:#A9B2A3;
-  --phos:#156B3F;                /* schematic green · 6.6:1   */
-  --phos-dim:#3D8A63;
-  --phos-ink:#F2FBF4;            /* 6.2:1 on solid            */
-  --phos-subtle:rgba(21,107,63,.09);
-  --phos-border:rgba(21,107,63,.4);
-  --phos-glow:none;
-  --fail:#A5352A;                /* 6.4:1                     */
-  --fail-ink:#FFF5F3;
-  --fail-subtle:rgba(165,53,42,.08);
-  --fail-border:rgba(165,53,42,.4);
-  --cursor:#7A5A00;              /* 5.9:1                     */
-  --cursor-subtle:rgba(150,110,0,.10);
-  --graticule:rgba(21,107,63,.10);
-  --graticule-strong:rgba(21,107,63,.20);
-  --border-default:rgba(40,49,42,.15);
-  --border-strong:rgba(40,49,42,.28);
-  --shadow-1:0 1px 2px rgba(40,49,42,.06),0 2px 6px rgba(40,49,42,.06);
-  --shadow-2:0 10px 26px -8px rgba(40,49,42,.18);
-  --inner-edge:inset 0 0 0 1px rgba(255,255,255,.5);
-  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--phos);
-  --scrim:rgba(22,27,21,.45);
-  --scanline:transparent;
+  --canvas-base:#F5F1E8;        /* bone                     */
+  --canvas-surface:#FDFBF5;
+  --canvas-raised:#FFFFFF;
+  --canvas-inset:#EBE5D8;
+  --canvas-overlay:#FFFFFF;
+  --text-max:#1C1712;
+  --text-primary:#26211B;       /* 14.2:1                   */
+  --text-secondary:#5E564A;     /* 7.0:1 on surface         */
+  --text-tertiary:#6E6557;      /* 5.0:1 on base            */
+  --text-disabled:#B4AC9E;
+  --accent:#0F7A6D;             /* deep aqua                */
+  --accent-hover:#0C665B;
+  --accent-pressed:#095349;
+  --accent-text:#0F7A6D;        /* 4.6:1 — labels/large     */
+  --accent-subtle:rgba(15,122,109,.09);
+  --accent-border:rgba(15,122,109,.4);
+  --on-accent:#F2FBF9;          /* 5.0:1 on deep aqua       */
+  --pass:#20713F;   --pass-ink:#F2FBF5;  --pass-text:#20713F; --pass-subtle:rgba(32,113,63,.10);
+  --fail:#AC3A2B;   --fail-ink:#FFF5F3;  --fail-text:#AC3A2B; --fail-subtle:rgba(172,58,43,.09);
+  --amber:#7A5600;  --amber-text:#7A5600; --amber-subtle:rgba(150,106,0,.12);
+  --border-default:rgba(38,33,27,.13);
+  --border-strong:rgba(38,33,27,.26);
+  --shadow-1:0 1px 2px rgba(38,33,27,.05),0 3px 10px rgba(38,33,27,.06);
+  --shadow-2:0 12px 30px -10px rgba(38,33,27,.16);
+  --ring-accent:0 0 0 1.5px var(--accent-border);
+  --cmd-ink:#0A5A50;           /* 5.7:1 on inset           */
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--accent);
+  --scrim:rgba(28,23,18,.45);
 }
 

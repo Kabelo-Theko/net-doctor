@@ -1,83 +1,62 @@
-# net-doctor — "Bench Oscilloscope" design system
+# net-doctor — "Calm Field Guide" design system (v2)
 
-**Project:** [net-doctor](https://github.com/Kabelo-Theko/net-doctor) · **Redesign:** complete UI/UX overhaul, July 2026
+**Project:** [net-doctor](https://github.com/Kabelo-Theko/net-doctor) · **v2 redesign, July 2026**
+*(v1's CRT/oscilloscope theme was retired after review: novelty theming,
+mono-everything and scanline texture read as AI-generated. v2 designs the
+product, not a costume.)*
 
 ## The concept
 
-net-doctor already thinks like an instrument — probe one layer at a time, stop
-at the first broken one. The redesign makes it **look like the instrument it
-is**: a bench oscilloscope. The diagnostic runs on a phosphor CRT screen with a
-faint graticule; each completed check is a pulse on the trace (clean green =
-passed, dropped red = failed); the conclusion is a **DIAGNOSIS LOCKED** readout
-with a 2-blink trigger lamp. Views are channels on the front panel
-(CH1 Diagnose · CH2 Escalation card · CH3 Reference), and OS / environment /
-field-mode live in a Setup drawer of instrument switches.
-
-A light **service-manual** theme (paper + schematic green) covers printed-page
-tastes and bright rooms.
+At 2am with a store offline, the tool's job is to be **the calmest thing in the
+room**. v2 is a field guide with a steady hand: warm obsidian canvas, bone ink,
+one aqua pulse that marks exactly what's alive — the active step, the primary
+action, the lamp. The diagnostic reads as a soft numbered timeline; the
+conclusion arrives as a quiet, aqua-ringed readout. A warm bone light theme
+covers bright rooms.
 
 ### Design DNA
 
 | | |
 |---|---|
-| **Essence** | A network fault, on a scope. Method made visible. |
-| **One-liner** | "A Tektronix bench scope hired to walk first-line through a fault." |
-| **Archetype** | Engineer/Sage 70 (the method is the product) / Caregiver 30 (it holds your hand at 2am) |
-| **Canvas** | CRT black-green `#0B110D` with a phosphor screen panel `#0D1710` (chosen for the instrument persona) · paper service-manual theme |
-| **Accent** | Phosphor green `#5BEB9E` (trace, pass, locks) · fail trace `#FF7A66` · amber cursor `#F5C86B` for the active probe + AI labels |
-| **Type cast** | Azeret Mono 600/700 (readouts, headings, commands) · Schibsted Grotesk (explanations) — a mono-led instrument voice, no serif anywhere |
-| **Shape** | 3–10px radii, bezel panels with inner edges, square LEDs; graticule = 28px grid lines; scanline texture at 3.5% on the screen only |
-| **Motion** | Trace-like: one rise per view on a probe bezier; the lock lamp blinks exactly twice; the only loop is the busy spinner |
-| **Signature** | The graticule screen + spine-as-trace with pulse nodes and `signal clean / signal lost` verdicts; channel-button nav with LEDs |
-| **Rejection list** | No blue/indigo tech gradients, no glassmorphism, no rounded consumer pills, no serif, no Inter, no glow beyond the phosphor budget (≤ .14 alpha), no emoji |
+| **Essence** | A steady hand for the worst hour of the shift. Method made calm. |
+| **One-liner** | "Linear's design team hired to rebuild a paper troubleshooting flowchart." |
+| **Canvas** | Warm obsidian `#131110` with bone ink `#F3EFE9` (field, default) · warm bone `#F5F1E8` (light). Warm neutrals, never sci-fi green-black. |
+| **Accent** | Aqua pulse `#3ECFBB` (field) / deep aqua `#0F7A6D` (bone) — active step ring, primary actions, the breathing brand lamp. Pass/fail stay semantic green/red as tinted chips and solid trigger buttons. |
+| **Type cast** | Clash Display 600 (headlines, flow titles — confident 2026 grotesk, Fontshare) · General Sans (text, Fontshare) · Red Hat Mono (commands and IDs only) |
+| **Shape** | Soft 10–26px radii, pill controls, segmented pill switches — tactile, not bezelled |
+| **Signature** | The **layer-path capsule** (LINK · IP · GATEWAY · DNS · APP as a segmented pill) and the timeline whose active step sits in a lifted card with an aqua halo ring |
+| **Motion** | Settled: one rise per view, active-step halo static, lamp breathes at 3.2s (ambient), lock dot blinks ×2 then holds |
+| **Rejection list** | No CRT/scanlines/graticule, no phosphor green, no mono body text, no hard 3px radii, no channel-hardware metaphors, no glow beyond the halo ring |
 
-### Why this fits these users
+### The 2026 bar it was rebuilt against
+Warm canvas · Clash Display scale moment (hero clamp 2.2–3.9rem vs 15px body)
+· left-rail app shell (the suite's only sidebar) · pill/segmented controls ·
+ONE accent ≤5% of screen · 12%-alpha semantic chips · spring hovers ·
+Fontshare voice.
 
-A first-line tech mid-fault needs *sequence*, not choice. The trace makes
-progress physical — you can see how deep into the stack you are, which checks
-were clean, exactly where the signal was lost. Commands render for the tech's
-actual OS; field mode splits every check into manager-speak and tech-speak
-panes; the escalation card is the instrument printout second line actually
-wants.
+## Functional parity (zero loss — engine untouched)
 
-### How it differs from the siblings
-
-Only project with: green-black CRT canvas, phosphor/graticule language,
-mono-led type, channel-button nav, scanline texture. (ticket-triage: indigo
-dispatch strips · onboard-kit: cream welcome kit · slo-watch: salmon broadsheet
-· requirements-forge: cyanotype blueprint · incident-retro: archival dossier ·
-resolve-notes: riso zine · portfolio: kinetic editorial.)
-
-## Functional parity (zero loss)
-
-All five flows (verbatim from `flows.py` mirror) · OS-aware commands ·
-environment hints · multi-user precheck + major-incident banner · field-mode
-dual panes · AI explain / router / escalation-note with reasoning receipts and
-no-key fallbacks · resolution textarea → printable incident record (print
-contract unchanged) · escalation card text format unchanged · deep-link URL
-params (`os`, `env`, `field`, `store`, `symptom`) · resolve-notes cross-link.
-
-New: channel nav with `aria-current` + LEDs, Setup drawer (was a popover),
-CRT/manual themes persisted, live-region announcements after every verdict,
-labelled AI inputs, skip link, focus management, custom instrument icon set.
+The v1 script ships intact (only theme names renamed screen→field,
+manual→bone): all five flows, OS-aware commands, environment hints, multi-user
+precheck + banner, field-mode dual panes, AI explain / router / escalation-note
+with reasoning receipts and no-key fallbacks, escalation-card text contract,
+printable incident record (print CSS contract unchanged), URL deep links
+(`os, env, field, store, symptom`), resolve-notes cross-link, verdict
+announcements, focus management.
 
 ## Files
-
-`tokens.css` (both themes) · `tailwind.config.js` · `components.md` ·
-`accessibility.md` · `motion.md` · `grid.md` · `icons/scope-icons.svg`
-(7 symbols — 24px grid, 1.7 squared stroke).
+`tokens.css` · `tailwind.config.js` · `components.md` · `accessibility.md` ·
+`motion.md` · `grid.md` · `icons/scope-icons.svg` (8 round-stroke icons).
 
 ## Reaching every state
-
 | State | How |
 |---|---|
-| Input select (home) | Load the app |
-| Multi-user banner | Toggle "Yes, several" in the precheck |
-| Trace mid-flow | Pick CH1 symptom, answer a few checks — pass and fail both |
-| Diagnosis locked | Follow any branch to its conclusion (lamp blinks twice) |
-| Field mode dual panes | Setup → Field mode → Dual pane (best on the POS flow) |
-| AI loading / fallback | Explain or Route without the backend |
-| Escalation card / empty | CH2 after / before a diagnosis |
-| Incident record print | Conclusion → Print incident record |
-| Service-manual theme | Book icon, top right; persists |
+| Home / input select | Load the app — five symptom cards with aqua number chips |
+| Multi-user banner | Toggle "Yes, several" |
+| Timeline mid-flow | Pick a symptom; answer pass and fail |
+| Diagnosis readout | Reach any conclusion (aqua ring, lock dot ×2) |
+| Field-mode panes | Setup → Field mode → Dual pane |
+| AI loading / fallback | Explain or Route offline |
+| Escalation card / empty | Second rail item, after / before a diagnosis |
+| Bone (light) theme | Theme in the rail foot; persists |
 | Deep link | `?symptom=pos&store=Gateway&os=mac&env=pos&field=1` |

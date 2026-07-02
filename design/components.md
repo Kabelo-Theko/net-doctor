@@ -1,78 +1,65 @@
-# Component library — net-doctor "Bench Oscilloscope"
+# Component library — net-doctor v2 "Calm Field Guide"
 
-Semantic tokens only (`tokens.css`). Type: readouts/data = Azeret Mono,
-explanations = Schibsted Grotesk.
+Semantic tokens only. Type: Clash Display (headlines) · General Sans (text) ·
+Red Hat Mono (commands/IDs only).
 
-## Front panel (navigation)
-Sticky bezel bar: brand lamp + wordmark · **channel buttons** CH1/CH2/CH3
-(square LED + mono caps label) · Setup · theme toggle.
-Channel states: default (inset bg, dim LED) / hover / `aria-current` (phosphor
-text + border, lit LED with glow) / focus-visible.
+## App shell — left rail (the suite's only sidebar)
+216px sticky rail: brand (breathing aqua lamp + Clash wordmark) · GUIDE label ·
+three items with LED dots · rail foot (Setup, Theme).
+Item states: default / hover (aqua-subtle wash) / `aria-current` (surface fill
++ aqua ring + lit LED) / focus-visible.
+≤ 880px: the rail becomes a blurred sticky top bar; labels collapse to icons.
 
-## Setup drawer
-Full-width bezel drawer (replaces the old popover — reachable, not hover-lost):
-three labelled switch groups (OS · Environment · Field mode). Switch states:
-default / hover / **on** (solid phosphor + dark ink) / focus-visible.
+## Setup band
+Toggled by the rail's Setup (`aria-expanded`); a soft card of **segmented pill
+switches** (OS / Environment / Field mode): default / hover / on (solid aqua +
+dark ink) / focus-visible.
 
-## Buttons
-Mono-labelled rects (3px radius):
-| Variant | Use |
-|---|---|
-| `.btn-pass` | phosphor solid — "Passed / looks healthy" |
-| `.btn-fail` | fail solid — "Failed / not right" |
-| `.btn-primary` | phosphor solid — card/primary actions |
-| `.btn-ghost` | outline — secondary actions |
-All six states: default / hover / focus-visible / active (1px press) /
-disabled (.55) / busy (`aria-busy` + spinner + label swap).
+## Masthead
+**Layer-path capsule** (signature): LINK · IP · GATEWAY · DNS · APP as a
+segmented pill, first segment lit. Clash Display H1 with aqua emphasis word →
+lede → mono context line (setup summary).
 
-## Signature components
+## Symptom cards
+Full-width rounded cards: aqua number chip (44px, 14px radius) + Clash title +
+supporting line. Hover: raise −1px, aqua border; press .99.
 
-### Scope screen (`.scopescreen`)
-The flow container: screen-green panel, 28px **graticule** grid, static
-scanline overlay (3.5%), inner edge + shadow. Everything diagnostic happens
-inside it.
+## The timeline (flow)
+Soft vertical line with 14px dot nodes:
+- done-pass: solid green dot, row at 78% opacity, "looks healthy" chip
+- done-fail: solid red dot, "not right" chip
+- **active: lifted surface card with an aqua halo ring around its dot** —
+  check text, command pill (mono, » prefix, on inset), interpretation,
+  Pass (solid green pill) / Fail (solid red pill) triggers.
 
-### The trace (`.spine` + `.node`)
-Vertical phosphor baseline; each check is a square pulse node:
-- **done-pass** — solid phosphor node + `SIGNAL CLEAN` verdict chip
-- **done-fail** — solid fail node + `SIGNAL LOST` chip
-- **active** — amber-ringed hollow node + measurement block: check text,
-  OS-aware command (`» prefix`, phosphor on inset), interpretation, triggers.
+## Diagnosis readout
+26px-radius surface card with aqua border + deep shadow: "DIAGNOSIS LOCKED"
+(dot blinks ×2) → Clash cause → FIX (green heading) → environment note (amber
+heading) → WHEN TO ESCALATE → resolution textarea → actions (escalation card ·
+AI note · resolution note → resolve-notes · print record · start over).
 
-### Diagnosis readout (`.conclusion`)
-Phosphor-bordered panel with contained glow: `◾ DIAGNOSIS LOCKED` label (lamp
-blinks ×2, holds) → cause (mono 700) → FIX (phosphor heading) → environment
-hint (amber heading, env-specific) → WHEN TO ESCALATE → resolution textarea →
-actions (escalation card · AI note · resolution note → resolve-notes ·
-print record · start over).
+## Field-mode panes
+Inset panes: FOR THE STORE MANAGER (green role label) / FOR THE TECHNICIAN
+(amber role label, mono command voice). 2-up, stack < 620px.
 
-### Field-mode dual panes
-`FOR THE STORE MANAGER` (phosphor top rule) / `FOR THE TECHNICIAN` (amber top
-rule, command voice). Grid 2-up, stacks < 620px.
-
-## AI analyzer boxes
-Amber-labelled bezel panels: error explainer (input + model + Explain) and
-flow router (description + Route → plan + layer chip + "Start:" button).
-Every response carries a mono **reasoning receipt**; every failure has a
-designed no-key note that points back to the rule-based path.
-
-## Symptom picker ("input select")
-CH-numbered buttons: mono channel square + title + description. Hover =
-phosphor border; the number is the affordance (an input jack, not a bullet).
+## AI boxes
+Soft cards: labelled rows (spark = explain, probe = router), borderless inset
+inputs, pill selects, primary aqua actions; layer chips as aqua-subtle pills;
+mono reasoning receipts; designed no-key notes.
 
 ## Escalation card
-Mono `pre` printout on inset (text contract unchanged), copy + back actions;
-designed empty state when no diagnosis is on the screen.
+Mono printout in a soft card (text contract unchanged) + copy/back; designed
+empty state.
 
 ## Reference
-Layer list (1·Link → 5·App) as a bezel list with phosphor layer keys;
-three-OS command cheat table (mono phosphor `code`), horizontal scroll on
-small screens.
+Layer list card (Clash layer keys) + three-OS command table (mono command ink),
+horizontal scroll ≤ 560px.
 
-## Incident record (print)
-Unchanged print contract: visibility-swap CSS, signature lines, checks table.
+## Buttons
+Pills: primary aqua / pass green / fail red / ghost outline; six states each
+(hover lift, spring press, `aria-busy` spinner).
 
 ## Iconography
-`icons/scope-icons.svg` — 7 symbols (probe-trace, alert, book, crt, spark,
-copy, check). 24px grid · 1.7px squared stroke — an instrument etch; LEDs and
-channel squares are CSS primitives, not icons.
+`icons/scope-icons.svg` — 8 symbols (probe, alert, book, sun, spark, copy,
+check, dial), 24px grid, **1.8 round stroke**. LEDs and dots are CSS
+primitives.

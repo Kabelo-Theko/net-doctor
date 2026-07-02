@@ -1,42 +1,35 @@
-# Responsive grid & layout — net-doctor "Bench Oscilloscope"
+# Responsive grid & layout — net-doctor v2 "Calm Field Guide"
 
 ## Breakpoints
 | Width | Changes |
 |---|---|
-| ≤ 560px | H1 compresses; cheat table scrolls horizontally; AI inputs release min-width; channel row wraps to its own line (order 3) |
-| ≤ 620px | Field-mode dual panes stack |
-| 940px | `--bench-max` — instrument face never stretches wider |
+| ≤ 560px | Cheat table scrolls; AI inputs release min-width; active card un-indents; timeline gutter tightens |
+| ≤ 620px | Field-mode panes stack |
+| ≤ 880px | **Rail → sticky top bar** (blurred), labels collapse to icons, channels scroll horizontally |
+| 880px+ | 216px rail · content column (max 880px + gutters) |
 
 Checked at 360 / 768 / 1280.
 
-## Column structure
-Single-column instrument face (a scope is one screen):
+## Structure
 ```
-┌ front panel (sticky) ─ brand · CH1 CH2 CH3 · setup · theme ┐
-├ setup drawer (when open): OS | Environment | Field mode    ┤
-│ signal path strip (LINK → IP → GW → DNS → APP)             │
-│ H1 + lede + setup context line                             │
-│ CH1: precheck → AI analyzer → AI router → input select     │
-│  └ in flow: [scope screen: graticule + trace + readout]    │
-│ CH2: escalation printout                                   │
-│ CH3: layer list + cheat table                              │
-│ footer                                                      │
-└──────────────────────────────────────────────────────────────┘
+┌ rail 216px ┬ content ───────────────────────────────┐
+│ ● net-doctor │ [setup band when open]               │
+│ GUIDE        │ (LINK·IP·GATEWAY·DNS·APP) capsule    │
+│ ● Diagnose   │ Clash H1 · lede · context line       │
+│ ○ Escalation │ precheck → AI boxes → symptom cards  │
+│ ○ Reference  │   └ flow: timeline + active card     │
+│ ──────────── │        → diagnosis readout           │
+│ ⚙ Setup      │ footer                                │
+│ ◐ Theme      │                                       │
+└──────────────┴───────────────────────────────────────┘
 ```
 
-## Reflow rules
-- **Trace**: fixed 34px gutter for pulse nodes; measurement text max 64ch;
-  commands wrap as inline blocks.
-- **AI rows**: input flexes (min 200px), model + button wrap beneath on narrow.
-- **Symptom buttons**: full-width rows at all sizes (tap targets first).
-- **Conclusion actions**: wrap freely; primary first in source order.
-- **Cheat table**: block-scrolls inside its bezel below 560px.
-- **Setup drawer**: groups wrap with 32px gaps.
-
-## Type fluidity
-H1 `clamp(1.6 → 2.6rem)` mono; readouts fixed; body 15px. Explanations capped
-at 62–66ch.
+## Reflow
+Timeline: 40px gutter, dots at −47px; active card indents −20px on desktop,
+flush on mobile. Symptom cards full-width always. Setup groups wrap at 32px
+gaps. Escalation printout is fluid mono.
 
 ## Rhythm
-4px grid (93% audited). Bezel interiors 16/20px; graticule cell 28px (7×4 —
-on-grid); section padding 40–64px.
+4px grid (88% audited). Cards 20px interior; content sections 32–64px; hero
+32px below capsule. Radii: 10 (rail items) / 14 (chips) / 20 (cards) /
+26 (readout) / pill (controls).
