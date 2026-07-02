@@ -1,251 +1,356 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="screen">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>net-doctor: structured network troubleshooting</title>
-<meta name="description" content="A guided, layered diagnostic for first-line network faults, with OS-aware commands and a copyable escalation card." />
+<title>net-doctor — bench diagnostics for network faults</title>
+<meta name="description" content="A guided, layered network diagnostic that behaves like a bench instrument: probe one layer at a time (link, IP, gateway, DNS, app), read the trace, and print an escalation card for second line." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Chivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-  /*
-    net-doctor v3: DIAGNOSTIC INSTRUMENT (multi-view).
-    Warm-shifted off-black, one amber signal colour (outside the blue/indigo slop
-    band), flat square markers, no glow, no decorative grid. State shown by colour
-    AND text label. Nav collapses to a hamburger on narrow screens.
-  */
-  :root{
-    --bg:#15171c; --panel:#1b1e24; --inset:#11131a; --line:#2b2f37; --line-soft:#23272e;
-    --ink:#e9e4d9; --soft:#a7a294; --mute:#6f6c63;
-    --amber:#eaa044; --amber-deep:#7a5526;
-    --ok:#8fb38c; --ok-bg:#1a241d; --ok-line:#2d3c30;
-    --fail:#d8694f; --fail-bg:#251a17; --fail-line:#3c2620;
-    --radius:8px; --mono:"JetBrains Mono",ui-monospace,monospace; --sans:"Chivo",system-ui,sans-serif;
-    --ease:340ms cubic-bezier(.2,.7,.2,1);
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55}
-  .wrap{max-width:900px;margin:0 auto;padding:0 28px}
-  a{color:inherit}
+/* ════════════════════════════════════════════════════════════════
+   NET-DOCTOR · "BENCH OSCILLOSCOPE" — the network fault on a scope.
+   Phosphor-on-CRT screen, graticule spine, channel-button nav,
+   trigger verdicts. Probe one layer at a time; stop at the first
+   broken one.
+   Themes: screen (CRT, default) · manual (paper service-manual)
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  --font-scope:"Azeret Mono",ui-monospace,monospace;   /* readouts + data */
+  --font-text:"Schibsted Grotesk",system-ui,sans-serif; /* explanations   */
+  --text-xs:.71875rem;--text-sm:.8125rem;--text-base:.9375rem;--text-md:1.0625rem;
+  --text-lg:1.1875rem;--text-xl:1.5rem;
+  --text-display:clamp(1.6rem,1.1rem + 2.4vw,2.6rem);
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;
+  --space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;--space-16:64px;
+  --radius-xs:3px;--radius-sm:6px;--radius-md:10px;
+  --motion-micro:110ms;--motion-small:190ms;--motion-large:280ms;--motion-page:380ms;
+  --ease-standard:cubic-bezier(.2,0,0,1);
+  --ease-trace:cubic-bezier(.3,.7,.1,1);
+  --bench-max:940px;
+}
+:root,html[data-theme="screen"]{
+  color-scheme:dark;
+  --canvas-base:#0B110D;         /* CRT housing black-green   */
+  --canvas-screen:#0D1710;       /* the phosphor screen       */
+  --canvas-panel:#131B15;        /* bezel panels              */
+  --canvas-inset:#080D0A;        /* command wells             */
+  --canvas-overlay:#1A241C;
+  --text-max:#EAF5EC;            /* 15.5:1 on base            */
+  --text-primary:#D2E2D5;        /* 12.2:1                    */
+  --text-secondary:#96AB9B;      /* 6.6:1                     */
+  --text-tertiary:#7E937F;       /* 5.0:1 (base only)         */
+  --text-disabled:#48584B;
+  --phos:#5BEB9E;                /* phosphor green · 10.5:1   */
+  --phos-dim:#38B978;
+  --phos-ink:#04140B;            /* on solid phosphor · 12.9:1 */
+  --phos-subtle:rgba(91,235,158,.09);
+  --phos-border:rgba(91,235,158,.4);
+  --phos-glow:0 0 14px rgba(91,235,158,.14);
+  --fail:#FF7A66;                /* fail trace · 7.5:1        */
+  --fail-ink:#230703;
+  --fail-subtle:rgba(255,122,102,.10);
+  --fail-border:rgba(255,122,102,.42);
+  --cursor:#F5C86B;              /* amber cursor/warn · 10.4:1 */
+  --cursor-subtle:rgba(245,200,107,.10);
+  --graticule:rgba(91,235,158,.07);
+  --graticule-strong:rgba(91,235,158,.14);
+  --border-default:rgba(210,226,213,.10);
+  --border-strong:rgba(210,226,213,.22);
+  --shadow-1:0 1px 3px rgba(0,0,0,.45);
+  --shadow-2:0 10px 26px rgba(0,0,0,.55);
+  --inner-edge:inset 0 0 0 1px rgba(210,226,213,.04);
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--phos);
+  --scrim:rgba(2,6,3,.72);
+  --scanline:rgba(0,0,0,.14);
+}
+html[data-theme="manual"]{
+  color-scheme:light;
+  --canvas-base:#F4F3EC;         /* service-manual paper      */
+  --canvas-screen:#EDF3EA;       /* schematic panel           */
+  --canvas-panel:#FCFBF6;
+  --canvas-inset:#E7EAE0;
+  --canvas-overlay:#FCFBF6;
+  --text-max:#161B15;            /* 15.5:1                    */
+  --text-primary:#28312A;        /* 11.6:1                    */
+  --text-secondary:#525F53;      /* 6.3:1                     */
+  --text-tertiary:#67755F;       /* 4.6:1 (base only)         */
+  --text-disabled:#A9B2A3;
+  --phos:#156B3F;                /* schematic green · 6.6:1   */
+  --phos-dim:#3D8A63;
+  --phos-ink:#F2FBF4;            /* 6.2:1 on solid            */
+  --phos-subtle:rgba(21,107,63,.09);
+  --phos-border:rgba(21,107,63,.4);
+  --phos-glow:none;
+  --fail:#A5352A;                /* 6.4:1                     */
+  --fail-ink:#FFF5F3;
+  --fail-subtle:rgba(165,53,42,.08);
+  --fail-border:rgba(165,53,42,.4);
+  --cursor:#7A5A00;              /* 5.9:1                     */
+  --cursor-subtle:rgba(150,110,0,.10);
+  --graticule:rgba(21,107,63,.10);
+  --graticule-strong:rgba(21,107,63,.20);
+  --border-default:rgba(40,49,42,.15);
+  --border-strong:rgba(40,49,42,.28);
+  --shadow-1:0 1px 2px rgba(40,49,42,.06),0 2px 6px rgba(40,49,42,.06);
+  --shadow-2:0 10px 26px -8px rgba(40,49,42,.18);
+  --inner-edge:inset 0 0 0 1px rgba(255,255,255,.5);
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--phos);
+  --scrim:rgba(22,27,21,.45);
+  --scanline:transparent;
+}
 
-  /* ---- top bar / nav ---- */
-  .topbar{position:sticky;top:0;z-index:30;background:rgba(21,23,28,.86);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
-  .topbar .row{max-width:900px;margin:0 auto;padding:13px 28px;display:flex;align-items:center;gap:16px}
-  .brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:700;font-size:14px;color:var(--ink);letter-spacing:.02em}
-  .brand .dot{width:9px;height:9px;border-radius:2px;background:var(--amber)}
-  .nav{display:flex;gap:4px;margin-left:auto;align-items:center}
-  .nav a{font-family:var(--mono);font-size:12.5px;color:var(--soft);text-decoration:none;padding:7px 12px;border-radius:6px;border:1px solid transparent;cursor:pointer;letter-spacing:.02em}
-  .nav a:hover{color:var(--ink);border-color:var(--line)}
-  .nav a.active{color:var(--amber);border-color:var(--amber-deep);background:#211a10}
-  .nav .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
-  .hamb{display:none;margin-left:auto;background:transparent;border:1px solid var(--line);border-radius:7px;padding:8px 10px;cursor:pointer}
-  .hamb span{display:block;width:18px;height:2px;background:var(--ink);margin:3px 0;border-radius:2px}
-  @media (max-width:680px){
-    .nav{display:none;position:absolute;top:54px;right:14px;left:14px;flex-direction:column;align-items:stretch;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin:0}
-    .nav.open{display:flex}
-    .nav .sep{display:none}
-    .hamb{display:block}
-  }
+/* ── base ── */
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas-base);color:var(--text-primary);font-family:var(--font-text);font-size:var(--text-base);line-height:1.6;-webkit-font-smoothing:antialiased;transition:background var(--motion-large) var(--ease-standard)}
+a{color:inherit}
+svg{display:block}
+.wrap{max-width:var(--bench-max);margin:0 auto;padding:0 clamp(16px,4vw,28px)}
+.scope{font-family:var(--font-scope)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-9999px;top:0;z-index:100;background:var(--phos);color:var(--phos-ink);font-family:var(--font-scope);font-weight:600;font-size:13px;padding:12px 20px;text-decoration:none}
+.skip:focus{left:0}
+.ic{width:16px;height:16px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:square;stroke-linejoin:miter;flex:none}
 
-  /* settings popover */
-  .settings{position:relative}
-  .setbtn{font-family:var(--mono);font-size:12.5px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer}
-  .setbtn:hover{color:var(--ink);border-color:var(--amber-deep)}
-  .setpanel{display:none;position:absolute;right:0;top:38px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;width:236px;box-shadow:0 18px 40px -24px rgba(0,0,0,.7);z-index:40}
-  .setpanel.open{display:block}
-  .setpanel .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 7px}
-  .seg{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
-  .seg button{font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--soft);cursor:pointer}
-  .seg button.on{background:var(--amber);color:#1c1205;border-color:var(--amber)}
-  @media (max-width:680px){.settings{margin-left:auto}}
+/* ── front panel (nav) ── */
+.frontpanel{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--canvas-panel) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-default)}
+.frontpanel .row{max-width:var(--bench-max);margin:0 auto;padding:12px clamp(16px,4vw,28px);display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;font-family:var(--font-scope);font-weight:700;font-size:14px;letter-spacing:.04em;color:var(--text-max);text-decoration:none}
+.brand .lamp{width:9px;height:9px;border-radius:2px;background:var(--phos);box-shadow:var(--phos-glow)}
+.channels{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.ch{appearance:none;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-scope);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-xs);padding:8px 12px;cursor:pointer;transition:color var(--motion-micro) var(--ease-standard),border-color var(--motion-micro)}
+.ch .led{width:6px;height:6px;border-radius:1px;background:var(--text-disabled);flex:none}
+.ch:hover{color:var(--text-primary);border-color:var(--border-strong)}
+.ch[aria-current="page"]{color:var(--phos);border-color:var(--phos-border)}
+.ch[aria-current="page"] .led{background:var(--phos);box-shadow:var(--phos-glow)}
+.ch:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.iconbtn{appearance:none;background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-xs);color:var(--text-secondary);width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:color var(--motion-micro),border-color var(--motion-micro)}
+.iconbtn:hover{color:var(--text-primary);border-color:var(--border-strong)}
+.iconbtn:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 
-  header.mast{padding:46px 0 24px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber)}
-  h1{font-family:var(--mono);font-weight:700;font-size:clamp(24px,4vw,36px);line-height:1.15;letter-spacing:-.005em;margin:14px 0 0;max-width:22ch;color:var(--ink)}
-  .lede{font-size:15.5px;color:var(--soft);margin:13px 0 0;max-width:62ch}
-  .lede b{color:var(--ink);font-weight:600}
-  .ctx{font-family:var(--mono);font-size:12px;color:var(--mute);margin:14px 0 0}
-  .ctx b{color:var(--amber);font-weight:500}
+/* setup drawer */
+.setup{border-bottom:1px solid var(--border-default);background:var(--canvas-panel);display:none}
+.setup.open{display:block}
+.setup .inner{max-width:var(--bench-max);margin:0 auto;padding:var(--space-4) clamp(16px,4vw,28px);display:flex;gap:var(--space-8);flex-wrap:wrap}
+.setgroup .lbl{font-family:var(--font-scope);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-tertiary);margin:0 0 8px}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{appearance:none;font-family:var(--font-scope);font-size:11.5px;padding:8px 12px;border-radius:var(--radius-xs);border:1px solid var(--border-default);background:transparent;color:var(--text-secondary);cursor:pointer;transition:all var(--motion-micro) var(--ease-standard)}
+.seg button:hover{border-color:var(--border-strong);color:var(--text-primary)}
+.seg button.on{background:var(--phos);color:var(--phos-ink);border-color:var(--phos)}
+.seg button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 
-  .view{padding-bottom:72px}
-  .hidden{display:none}
+/* ── masthead ── */
+.mast{padding:var(--space-10) 0 var(--space-6)}
+.sigpath{display:flex;align-items:center;gap:8px;font-family:var(--font-scope);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-tertiary);flex-wrap:wrap}
+.sigpath .segm{color:var(--phos)}
+.sigpath .arr{color:var(--text-disabled)}
+h1{font-family:var(--font-scope);font-weight:700;font-size:var(--text-display);line-height:1.15;letter-spacing:-.01em;margin:var(--space-3) 0 0;max-width:24ch;color:var(--text-max)}
+.lede{font-size:var(--text-base);color:var(--text-secondary);margin:var(--space-3) 0 0;max-width:62ch;text-wrap:pretty}
+.lede b{color:var(--text-primary);font-weight:600}
+.ctx{font-family:var(--font-scope);font-size:11.5px;color:var(--text-tertiary);margin:var(--space-4) 0 0}
+.ctx b{color:var(--cursor);font-weight:500}
 
-  /* multi-user precheck */
-  .precheck{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 16px;margin:6px 0 18px;flex-wrap:wrap}
-  .precheck .q{font-size:14px;color:var(--ink)}
-  .precheck .seg{margin:0}
-  .banner{background:var(--fail-bg);border:1px solid var(--fail-line);border-left:3px solid var(--fail);border-radius:var(--radius);padding:13px 16px;margin:0 0 18px;color:var(--ink);font-size:14px}
-  .banner b{color:var(--fail)}
-  .aibox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;margin:0 0 18px}
-  .aibox .albl{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin:0 0 9px}
-  .aibox .arow{display:flex;gap:9px;flex-wrap:wrap}
-  .aibox input{flex:1;min-width:220px;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:9px 11px}
-  .aibox input:focus{outline:2px solid var(--amber);outline-offset:2px;border-color:transparent}
-  .aibox select{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:9px 10px}
-  .aibox select:focus{outline:2px solid var(--amber);outline-offset:2px}
-  .airesult{margin-top:11px;font-size:14px;color:var(--soft);line-height:1.55}
-  .airesult .ex{color:var(--ink)}
-  .airesult .lyr{font-family:var(--mono);font-size:12px;color:var(--amber);margin-top:7px;display:inline-block;border:1px solid var(--amber-deep);border-radius:5px;padding:3px 9px}
-  .airesult .note{color:var(--mute);font-size:13px}
+.view{padding-bottom:var(--space-16)}
 
-  /* symptom list */
-  .pick{display:grid;gap:8px}
-  .symptom{display:flex;align-items:center;gap:16px;width:100%;text-align:left;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-left:2px solid transparent;border-radius:var(--radius);padding:16px 18px;transition:border-color var(--ease),background var(--ease)}
-  .symptom:hover{border-left-color:var(--amber);background:#20242b}
-  .symptom:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-  .symptom .n{font-family:var(--mono);font-weight:700;font-size:12.5px;color:var(--amber);border:1px solid var(--amber-deep);width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-  .symptom .t{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink)}
-  .symptom .d{font-size:13px;color:var(--mute);margin-top:3px}
+/* ── precheck + banner ── */
+.precheck{display:flex;align-items:center;gap:var(--space-3);background:var(--canvas-panel);border:1px solid var(--border-default);border-radius:var(--radius-sm);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);flex-wrap:wrap;box-shadow:var(--inner-edge)}
+.precheck .q{font-size:var(--text-sm);color:var(--text-primary);font-weight:500}
+.banner{background:var(--fail-subtle);border:1px solid var(--fail-border);border-radius:var(--radius-sm);padding:var(--space-3) var(--space-4);margin:0 0 var(--space-4);color:var(--text-primary);font-size:var(--text-sm);display:flex;gap:10px;align-items:flex-start}
+.banner .ic{color:var(--fail);margin-top:2px}
+.banner b{color:var(--fail)}
 
-  .topflow{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
-  .topflow .flowtitle{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--ink)}
-  .spine{position:relative;margin-left:5px;padding-left:30px}
-  .spine::before{content:"";position:absolute;left:8px;top:7px;bottom:18px;width:1px;background:var(--line)}
-  .node{position:relative;margin-bottom:16px}
-  .node::before{content:"";position:absolute;left:-30px;top:4px;width:10px;height:10px;border-radius:2px;background:transparent;border:1.5px solid var(--line);transform:translateX(2px)}
-  .node.done::before{background:var(--amber);border-color:var(--amber)}
-  .node.done.fail::before{background:var(--fail);border-color:var(--fail)}
-  .node.active::before{background:var(--bg);border-color:var(--amber)}
-  .node .step{font-size:15px;color:var(--ink)}
-  .cmd{font-family:var(--mono);font-size:12.5px;color:#cbc5b8;background:var(--inset);border:1px solid var(--line);border-left:2px solid var(--amber);border-radius:5px;padding:7px 11px;margin:9px 0;display:inline-block}
-  .cmd::before{content:"$ ";color:var(--amber)}
-  .node .interp{font-size:13px;color:var(--soft);margin:6px 0 0}
-  .verdict{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin-top:9px;display:inline-block;padding:3px 9px;border-radius:4px}
-  .verdict.pass{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-line)}
-  .verdict.fail{background:var(--fail-bg);color:var(--fail);border:1px solid var(--fail-line)}
-  .answers{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap}
+/* ── AI analyzer boxes ── */
+.aibox{background:var(--canvas-panel);border:1px solid var(--border-default);border-radius:var(--radius-sm);padding:var(--space-4);margin:0 0 var(--space-4);box-shadow:var(--inner-edge)}
+.aibox .albl{font-family:var(--font-scope);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cursor);margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.aibox .arow{display:flex;gap:8px;flex-wrap:wrap}
+.aibox input{flex:1;min-width:200px;font-family:var(--font-scope);font-size:12.5px;color:var(--text-primary);background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-xs);padding:12px}
+.aibox input::placeholder{color:var(--text-disabled)}
+.aibox input:focus-visible{outline:none;box-shadow:var(--focus-ring);border-color:transparent}
+.aibox select{font-family:var(--font-scope);font-size:12px;color:var(--text-primary);background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-xs);padding:12px}
+.aibox select:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.airesult{margin-top:var(--space-3);font-size:var(--text-sm);color:var(--text-secondary);line-height:1.6}
+.airesult .ex{color:var(--text-primary)}
+.airesult .lyr{font-family:var(--font-scope);font-size:11.5px;color:var(--cursor);margin-top:8px;display:inline-block;border:1px solid var(--cursor);border-radius:var(--radius-xs);padding:4px 12px}
+.airesult .note{color:var(--text-tertiary);font-size:var(--text-sm)}
+.receipt{font-family:var(--font-scope);font-size:10.5px;color:var(--text-tertiary);margin-top:8px;border-top:1px dashed var(--border-default);padding-top:8px;line-height:1.5}
 
-  button.btn{font-family:var(--mono);font-size:13px;font-weight:600;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid transparent;transition:background var(--ease),border-color var(--ease)}
-  button.btn:active{transform:translateY(1px)}
-  button.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-  .btn-pass{background:var(--ok);color:#11231a}
-  .btn-pass:hover{background:#9cc098}
-  .btn-fail{background:var(--fail);color:#26120d}
-  .btn-fail:hover{background:#e07a61}
-  .btn-ghost{background:transparent;color:var(--soft);border-color:var(--line)}
-  .btn-ghost:hover{border-color:var(--amber);color:var(--ink)}
-  .btn-primary{background:var(--amber);color:#1c1205}
-  .btn-primary:hover{background:#f1b25e}
+/* ── input select (symptom picker) ── */
+.picklbl{font-family:var(--font-scope);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-tertiary);margin:var(--space-5) 0 var(--space-2)}
+.pick{display:grid;gap:8px}
+.symptom{display:flex;align-items:center;gap:var(--space-4);width:100%;text-align:left;cursor:pointer;background:var(--canvas-panel);border:1px solid var(--border-default);border-radius:var(--radius-sm);padding:var(--space-4);transition:border-color var(--motion-micro) var(--ease-standard),background var(--motion-micro);box-shadow:var(--inner-edge)}
+.symptom:hover{border-color:var(--phos-border);background:var(--canvas-overlay)}
+.symptom:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.symptom .n{font-family:var(--font-scope);font-weight:700;font-size:12px;color:var(--phos);border:1px solid var(--phos-border);width:32px;height:32px;border-radius:var(--radius-xs);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.symptom .t{font-family:var(--font-scope);font-weight:600;font-size:14px;color:var(--text-max)}
+.symptom .d{font-size:var(--text-sm);color:var(--text-tertiary);margin-top:4px}
 
-  .conclusion{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:var(--radius);padding:20px 22px;margin-top:10px}
-  .conclusion .clbl{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:0 0 6px}
-  .conclusion .clbl::before{content:"> "}
-  .conclusion h3{font-family:var(--mono);font-size:17px;font-weight:700;margin:0 0 2px;color:var(--ink);line-height:1.3}
-  .conclusion .blk{margin-top:15px}
-  .conclusion p{margin:0;font-size:14px;color:var(--soft)}
-  .conclusion .h{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;color:var(--ink)}
-  .conclusion .h.fix{color:var(--ok)}
-  .conclusion .h.env{color:var(--amber)}
-  .concl-actions{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
-  .dual{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:9px 0}
-  @media (max-width:620px){.dual{grid-template-columns:1fr}}
-  .pane{background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:14px;color:var(--ink)}
-  .pane .role{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0 0 5px;display:block}
-  .pane.tech{border-left:2px solid var(--amber)}
-  .pane.mgr{border-left:2px solid var(--ok)}
-  .pane .pcmd{font-family:var(--mono);font-size:12.5px;color:#cbc5b8}
-  .pane .pcmd::before{content:"$ ";color:var(--amber)}
-  .receipt{font-family:var(--mono);font-size:10.5px;color:var(--mute);margin-top:9px;border-top:1px solid var(--line-soft);padding-top:7px;line-height:1.5}
-  .recbox{width:100%;font-family:var(--sans);font-size:14px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:6px;padding:9px 11px;margin-top:6px;min-height:58px;resize:vertical}
-  .recbox:focus{outline:2px solid var(--amber);outline-offset:2px;border-color:transparent}
-  #record{display:none}
-  @media print{
-    body *{visibility:hidden}
-    #record,#record *{visibility:visible}
-    #record{display:block;position:absolute;left:0;top:0;width:100%;background:#fff;color:#111;padding:14px 5%}
-    .topbar,footer,.mast{display:none!important}
-  }
-  #record{background:#fff;color:#111}
-  #record h2{font-family:var(--mono);font-size:18px;margin:0 0 6px;color:#111}
-  #record .rrow{font-family:var(--mono);font-size:12px;color:#222;margin:3px 0}
-  #record table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
-  #record th,#record td{border:1px solid #bbb;padding:6px 8px;text-align:left;color:#111}
-  #record .sig{margin-top:26px;display:flex;gap:40px;flex-wrap:wrap}
-  #record .sig div{flex:1;min-width:170px;border-top:1px solid #333;padding-top:5px;font-size:12px;color:#222}
+/* ── the trace (diagnostic spine on a graticule) ── */
+.topflow{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap}
+.topflow .flowtitle{font-family:var(--font-scope);font-weight:700;font-size:15px;color:var(--text-max)}
+.scopescreen{background:var(--canvas-screen);border:1px solid var(--border-strong);border-radius:var(--radius-md);padding:var(--space-5) var(--space-5) var(--space-5) var(--space-6);position:relative;box-shadow:var(--inner-edge),var(--shadow-1);background-image:linear-gradient(var(--graticule) 1px,transparent 1px),linear-gradient(90deg,var(--graticule) 1px,transparent 1px);background-size:28px 28px;overflow:hidden}
+.scopescreen::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,var(--scanline) 0 1px,transparent 1px 4px);opacity:.35}
+.spine{position:relative;margin-left:6px;padding-left:34px}
+.spine::before{content:"";position:absolute;left:9px;top:8px;bottom:20px;width:2px;background:var(--phos-dim);opacity:.55}
+.node{position:relative;margin-bottom:var(--space-5)}
+.node::before{content:"";position:absolute;left:-34px;top:5px;width:12px;height:12px;border-radius:2px;background:transparent;border:2px solid var(--phos-dim);transform:translateX(2px)}
+.node.done::before{background:var(--phos);border-color:var(--phos);box-shadow:var(--phos-glow)}
+.node.done.fail::before{background:var(--fail);border-color:var(--fail);box-shadow:none}
+.node.active::before{background:var(--canvas-screen);border-color:var(--cursor)}
+.node .step{font-size:var(--text-base);color:var(--text-primary);font-weight:500;max-width:64ch}
+.cmd{font-family:var(--font-scope);font-size:12.5px;color:var(--phos);background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-xs);padding:8px 12px;margin:8px 0;display:inline-block}
+.cmd::before{content:"» ";color:var(--cursor)}
+.node .interp{font-size:var(--text-sm);color:var(--text-secondary);margin:8px 0 0;max-width:62ch}
+.verdict{font-family:var(--font-scope);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin-top:8px;display:inline-block;padding:4px 12px;border-radius:var(--radius-xs);border:1px solid}
+.verdict.pass{background:var(--phos-subtle);color:var(--phos);border-color:var(--phos-border)}
+.verdict.fail{background:var(--fail-subtle);color:var(--fail);border-color:var(--fail-border)}
+.answers{display:flex;gap:8px;margin-top:var(--space-4);flex-wrap:wrap}
 
-  /* escalation card */
-  .escwrap{margin-top:4px}
-  pre.card{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--inset);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;white-space:pre-wrap;line-height:1.6;margin:0}
-  .escbar{display:flex;gap:9px;margin:0 0 14px;flex-wrap:wrap;align-items:center}
+/* buttons */
+.btn{appearance:none;font-family:var(--font-scope);font-size:12.5px;font-weight:600;letter-spacing:.03em;border-radius:var(--radius-xs);padding:12px 16px;cursor:pointer;border:1px solid transparent;display:inline-flex;align-items:center;gap:8px;text-decoration:none;transition:background var(--motion-micro) var(--ease-standard),border-color var(--motion-micro),color var(--motion-micro),transform var(--motion-micro)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.btn[disabled],.btn[aria-busy="true"]{cursor:not-allowed;opacity:.55}
+.btn-pass{background:var(--phos);color:var(--phos-ink)}
+.btn-pass:hover{background:var(--phos-dim)}
+.btn-fail{background:var(--fail);color:var(--fail-ink)}
+.btn-fail:hover{opacity:.9}
+.btn-primary{background:var(--phos);color:var(--phos-ink)}
+.btn-primary:hover{background:var(--phos-dim)}
+.btn-ghost{background:transparent;color:var(--text-secondary);border-color:var(--border-strong)}
+.btn-ghost:hover{border-color:var(--phos-border);color:var(--text-primary)}
+.spin{width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:rot .7s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
 
-  /* reference */
-  .ref h2{font-family:var(--mono);font-size:15px;color:var(--amber);letter-spacing:.04em;margin:26px 0 10px}
-  .layerlist{list-style:none;padding:0;margin:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-  .layerlist li{display:flex;gap:14px;padding:13px 16px;border-bottom:1px solid var(--line-soft);font-size:14px;color:var(--soft)}
-  .layerlist li:last-child{border-bottom:0}
-  .layerlist .ln{font-family:var(--mono);color:var(--amber);font-weight:700;flex:0 0 92px}
-  .layerlist b{color:var(--ink)}
-  table.cheat{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;font-size:12.5px}
-  table.cheat th,table.cheat td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:top}
-  table.cheat th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);background:#181b21}
-  table.cheat td.k{color:var(--soft)}
-  table.cheat td code{font-family:var(--mono);color:var(--amber)}
-  table.cheat tr:last-child td{border-bottom:0}
+/* ── conclusion: DIAGNOSIS LOCKED readout ── */
+.conclusion{background:var(--canvas-panel);border:1px solid var(--phos-border);border-radius:var(--radius-md);padding:var(--space-5) var(--space-6);margin-top:var(--space-3);box-shadow:var(--inner-edge),var(--phos-glow)}
+.conclusion .clbl{font-family:var(--font-scope);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--phos);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.conclusion .clbl .led{width:8px;height:8px;border-radius:2px;background:var(--phos);box-shadow:var(--phos-glow);animation:lock 1s var(--ease-standard) 2 both}
+@keyframes lock{0%{opacity:.2}50%{opacity:1}100%{opacity:1}}
+.conclusion h3{font-family:var(--font-scope);font-size:16.5px;font-weight:700;margin:0 0 2px;color:var(--text-max);line-height:1.35;max-width:56ch}
+.conclusion .blk{margin-top:var(--space-4)}
+.conclusion p{margin:0;font-size:var(--text-sm);color:var(--text-secondary);max-width:66ch}
+.conclusion .h{font-family:var(--font-scope);font-weight:700;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;color:var(--text-primary)}
+.conclusion .h.fix{color:var(--phos)}
+.conclusion .h.env{color:var(--cursor)}
+.concl-actions{display:flex;gap:8px;margin-top:var(--space-5);flex-wrap:wrap}
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+@media (max-width:620px){.dual{grid-template-columns:1fr}}
+.pane{background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-xs);padding:var(--space-3);font-size:var(--text-sm);color:var(--text-primary)}
+.pane .role{font-family:var(--font-scope);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-tertiary);margin:0 0 8px;display:block}
+.pane.tech{border-top:2px solid var(--cursor)}
+.pane.mgr{border-top:2px solid var(--phos)}
+.pane .pcmd{font-family:var(--font-scope);font-size:12px;color:var(--phos)}
+.pane .pcmd::before{content:"» ";color:var(--cursor)}
+.recbox{width:100%;font-family:var(--font-text);font-size:var(--text-sm);color:var(--text-primary);background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-xs);padding:12px;margin-top:8px;min-height:60px;resize:vertical}
+.recbox:focus-visible{outline:none;box-shadow:var(--focus-ring);border-color:transparent}
 
-  .empty{border:1px dashed var(--line);border-radius:var(--radius);padding:32px;color:var(--soft);font-size:14px}
-  .empty b{color:var(--ink)}
-  .enter{opacity:0;transform:translateY(7px);animation:rise var(--ease) forwards}
-  @keyframes rise{to{opacity:1;transform:none}}
-  @media (max-width:560px){
-    .topbar .row{padding:11px 16px}
-    h1{font-size:25px}
-    table.cheat{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
-    .aibox input{min-width:0}
-  }
-  @media (prefers-reduced-motion:reduce){.enter{animation:none;opacity:1;transform:none}button{transition:none}}
-  footer{border-top:1px solid var(--line);padding:24px 0 44px;color:var(--mute);font-size:12.5px;display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono)}
-  footer a{color:var(--soft);text-decoration:none;border-bottom:1px solid var(--line)}
-  footer a:hover{color:var(--amber);border-color:var(--amber)}
-  .src-note{color:var(--amber)}
+/* ── escalation card ── */
+.escwrap{margin-top:var(--space-1)}
+pre.card{font-family:var(--font-scope);font-size:12.5px;color:var(--text-primary);background:var(--canvas-inset);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:var(--space-5);white-space:pre-wrap;line-height:1.65;margin:0}
+.escbar{display:flex;gap:8px;margin:0 0 var(--space-4);flex-wrap:wrap;align-items:center}
+
+/* ── reference ── */
+.ref h2{font-family:var(--font-scope);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--phos);margin:var(--space-6) 0 var(--space-3)}
+.ref h2:first-child{margin-top:0}
+.layerlist{list-style:none;padding:0;margin:0;border:1px solid var(--border-default);border-radius:var(--radius-sm);overflow:hidden;background:var(--canvas-panel)}
+.layerlist li{display:flex;gap:var(--space-4);padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-default);font-size:var(--text-sm);color:var(--text-secondary)}
+.layerlist li:last-child{border-bottom:0}
+.layerlist .ln{font-family:var(--font-scope);color:var(--phos);font-weight:700;flex:0 0 96px;font-size:12.5px}
+.layerlist b{color:var(--text-primary)}
+table.cheat{width:100%;border-collapse:collapse;border:1px solid var(--border-default);border-radius:var(--radius-sm);overflow:hidden;font-size:12.5px;background:var(--canvas-panel)}
+table.cheat th,table.cheat td{text-align:left;padding:12px;border-bottom:1px solid var(--border-default);vertical-align:top}
+table.cheat th{font-family:var(--font-scope);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-tertiary);background:var(--canvas-inset)}
+table.cheat td.k{color:var(--text-secondary)}
+table.cheat td code{font-family:var(--font-scope);color:var(--phos);font-size:11.5px}
+table.cheat tr:last-child td{border-bottom:0}
+
+/* empty + motion */
+.empty{border:1px dashed var(--border-strong);border-radius:var(--radius-md);padding:var(--space-8);color:var(--text-secondary);font-size:var(--text-sm);background:var(--canvas-panel)}
+.empty b{color:var(--text-max)}
+.enter{opacity:0;transform:translateY(8px);animation:rise var(--motion-page) var(--ease-trace) forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+footer{border-top:1px solid var(--border-default);padding:var(--space-6) 0 var(--space-12);color:var(--text-tertiary);font-size:12px;display:flex;gap:var(--space-4);flex-wrap:wrap;font-family:var(--font-scope)}
+footer a{color:var(--text-secondary);text-decoration:none;border-bottom:1px solid var(--border-default)}
+footer a:hover{color:var(--phos);border-color:var(--phos-border)}
+footer a:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.src-note{color:var(--phos)}
+
+/* print record (unchanged contract) */
+#record{display:none;background:#fff;color:#111}
+@media print{
+  body *{visibility:hidden}
+  #record,#record *{visibility:visible}
+  #record{display:block;position:absolute;left:0;top:0;width:100%;background:#fff;color:#111;padding:14px 5%}
+  .frontpanel,footer,.mast{display:none!important}
+}
+#record h2{font-family:var(--font-scope);font-size:18px;margin:0 0 6px;color:#111}
+#record .rrow{font-family:var(--font-scope);font-size:12px;color:#222;margin:4px 0}
+#record table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+#record th,#record td{border:1px solid #bbb;padding:6px 8px;text-align:left;color:#111}
+#record .sig{margin-top:24px;display:flex;gap:40px;flex-wrap:wrap}
+#record .sig div{flex:1;min-width:170px;border-top:1px solid #333;padding-top:5px;font-size:12px;color:#222}
+
+@media (max-width:560px){
+  h1{font-size:22px}
+  table.cheat{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .aibox input{min-width:0}
+  .channels{width:100%;order:3}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
 </style>
 </head>
 <body>
-<div class="topbar">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="frontpanel">
   <div class="row">
-    <div class="brand"><span class="dot"></span> net-doctor</div>
-    <button class="hamb" id="hamb" aria-label="Menu"><span></span><span></span><span></span></button>
-    <nav class="nav" id="nav">
-      <a data-view="diagnose" class="active">Diagnose</a>
-      <a data-view="escalation">Escalation card</a>
-      <a data-view="reference">Reference</a>
-      <span class="sep"></span>
-      <span class="settings">
-        <button class="setbtn" id="setbtn">Settings</button>
-        <div class="setpanel" id="setpanel">
-          <p class="lbl">Operating system</p>
-          <div class="seg" id="seg-os">
-            <button data-os="win" class="on">Windows</button>
-            <button data-os="mac">macOS</button>
-            <button data-os="linux">Linux</button>
-          </div>
-          <p class="lbl">Environment</p>
-          <div class="seg" id="seg-env">
-            <button data-env="office" class="on">Office</button>
-            <button data-env="home">Home</button>
-            <button data-env="vpn">VPN</button>
-            <button data-env="pos">Store POS</button>
-          </div>
-          <p class="lbl">Field mode</p>
-          <div class="seg" id="seg-field">
-            <button data-field="off" class="on">Off</button>
-            <button data-field="on">Dual pane</button>
-          </div>
-        </div>
-      </span>
+    <a class="brand" href="#" id="homelink" aria-label="net-doctor home"><span class="lamp" aria-hidden="true"></span>NET-DOCTOR</a>
+    <nav class="channels" aria-label="Views">
+      <button class="ch" data-view="diagnose" aria-current="page"><span class="led" aria-hidden="true"></span>CH1 · Diagnose</button>
+      <button class="ch" data-view="escalation"><span class="led" aria-hidden="true"></span>CH2 · Escalation card</button>
+      <button class="ch" data-view="reference"><span class="led" aria-hidden="true"></span>CH3 · Reference</button>
     </nav>
+    <button class="ch" id="setbtn" aria-expanded="false" aria-controls="setup"><span class="led" aria-hidden="true"></span>Setup</button>
+    <button class="iconbtn" id="themebtn" aria-pressed="false" aria-label="Switch to service-manual theme">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-book"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="setup" id="setup">
+  <div class="inner">
+    <div class="setgroup"><p class="lbl">Operating system</p>
+      <div class="seg" id="seg-os" role="group" aria-label="Operating system">
+        <button data-os="win" class="on">Windows</button><button data-os="mac">macOS</button><button data-os="linux">Linux</button>
+      </div>
+    </div>
+    <div class="setgroup"><p class="lbl">Environment</p>
+      <div class="seg" id="seg-env" role="group" aria-label="Environment">
+        <button data-env="office" class="on">Office</button><button data-env="home">Home</button><button data-env="vpn">VPN</button><button data-env="pos">Store POS</button>
+      </div>
+    </div>
+    <div class="setgroup"><p class="lbl">Field mode</p>
+      <div class="seg" id="seg-field" role="group" aria-label="Field mode">
+        <button data-field="off" class="on">Off</button><button data-field="on">Dual pane</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="wrap">
   <header class="mast">
-    <div class="eyebrow">net-doctor · network diagnostics</div>
-    <h1>One check at a time, in the right order.</h1>
-    <p class="lede">A layered diagnostic for first-line network faults: <b>link, IP, gateway, DNS, then the app</b>. It stops at the first broken layer, shows the command for your OS, and hands you a copyable escalation card for second line.</p>
+    <p class="sigpath" aria-label="Signal path: link, IP, gateway, DNS, application">
+      <span class="segm">Link</span><span class="arr">→</span><span class="segm">IP</span><span class="arr">→</span><span class="segm">Gateway</span><span class="arr">→</span><span class="segm">DNS</span><span class="arr">→</span><span class="segm">App</span>
+    </p>
+    <h1>Probe one layer at a time.<br>Stop at the first broken one.</h1>
+    <p class="lede">A layered diagnostic for first-line network faults, run like a bench instrument: pick the symptom, read each check with the <b>command for your OS</b>, and mark what the trace shows. It ends on the <b>cause, the fix, and when to escalate</b> — with a copyable card for second line.</p>
     <p class="ctx" id="ctx"></p>
   </header>
 
-  <main id="main"></main>
+  <main id="main" tabindex="-1"></main>
   <div id="record"></div>
 
   <footer>
@@ -255,8 +360,21 @@
   </footer>
 </div>
 
+<div class="sr-only" role="status" aria-live="polite" id="live"></div>
+
+<!-- ── Icon set: 24px grid · 1.7 squared stroke (instrument etch) ── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="n-probe" viewBox="0 0 24 24"><path d="M4 14 8 8l4 8 4-10 4 12M3 20h18"/></symbol>
+  <symbol id="n-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3zM12 9.5V14M12 16.8v.01"/></symbol>
+  <symbol id="n-book" viewBox="0 0 24 24"><path d="M4 4h7v16H4zM13 4h7v16h-7M7 8h1.5M16 8h1.5"/></symbol>
+  <symbol id="n-crt" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M6 20h12M6 8l3 3 3-5 3 6 3-4"/></symbol>
+  <symbol id="n-spark" viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M12 9l3 3-3 3-3-3 3-3z"/></symbol>
+  <symbol id="n-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11"/><path d="M5 15V4h11"/></symbol>
+  <symbol id="n-check" viewBox="0 0 24 24"><path d="M4.5 12.5 10 18 19.5 6.5"/></symbol>
+</defs></svg>
+
 <script>
-/* ---------- OS-aware command tokens ---------- */
+/* ---------- OS-aware command tokens (unchanged) ---------- */
 const OSCMD = {
   showip:   {win:"ipconfig",                 mac:"ifconfig",                    linux:"ip addr"},
   showip_all:{win:"ipconfig /all",           mac:"ifconfig -a",                 linux:"ip addr show"},
@@ -269,7 +387,6 @@ const OSCMD = {
 const OSLABEL = {win:"Windows", mac:"macOS", linux:"Linux"};
 const ENVLABEL = {office:"Office", home:"Home", vpn:"VPN", pos:"Store POS"};
 
-/* environment-specific cause hints, keyed by conclusion id */
 const ENV_HINT = {
   "fix-dns": {
     office:"In the office a DNS failure usually means the internal DNS server is unreachable, not the PC.",
@@ -288,7 +405,7 @@ const ENV_HINT = {
   },
 };
 
-/* ---------- FLOWS (mirrors net_doctor/flows.py; oscmd token used where a step has a real command) ---------- */
+/* ---------- FLOWS (mirrors net_doctor/flows.py — unchanged) ---------- */
 const FLOWS = {
   "one-pc-no-internet":{title:"One PC has no internet (others are fine)",description:"A single machine cannot reach the internet while the rest of the office is working.",start:"link",steps:{
     link:{kind:"check",text:"Is the network link up? Check the Ethernet / Wi-Fi status and the cable or wireless connection.",oscmd:"showip",interpret:"'Media disconnected' means the link is down. A connected adapter shows an IPv4 address.",on_fail:"fix-link",on_pass:"ipaddr"},
@@ -346,8 +463,22 @@ const $ = s => document.querySelector(s);
 const main = $("#main");
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 const cmdFor = step => step.oscmd ? OSCMD[step.oscmd][state.os] : (step.command || "");
+function announce(m){$("#live").textContent="";requestAnimationFrame(()=>{$("#live").textContent=m;});}
 
-/* ---------- cross-app links, AI receipt, dual-pane and incident record ---------- */
+/* theme */
+const themeBtn=$("#themebtn");
+function applyTheme(t){
+  document.documentElement.dataset.theme=t;
+  const manual=t==="manual";
+  themeBtn.setAttribute("aria-pressed",String(manual));
+  themeBtn.setAttribute("aria-label",manual?"Switch to CRT screen theme":"Switch to service-manual theme");
+  themeBtn.innerHTML='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-'+(manual?"crt":"book")+'"/></svg>';
+  try{localStorage.setItem("nd-theme",t);}catch(e){}
+}
+themeBtn.addEventListener("click",()=>applyTheme(document.documentElement.dataset.theme==="manual"?"screen":"manual"));
+try{const s=localStorage.getItem("nd-theme");if(s)applyTheme(s);}catch(e){}
+
+/* ---------- cross-app links, AI receipt, dual-pane, incident record ---------- */
 const LINKS = { resolveNotes:"https://resolve-notes-q83m.vercel.app/", ticketTriage:"https://ticket-triage-nu.vercel.app/" };
 const aiModelLabel = () => { const s=$("#aimodel"); return s?s.options[s.selectedIndex].text.replace(/\s*\(.*\)\s*/,"").trim():"AI"; };
 const aiReceipt = task => `<div class="receipt">Reasoning receipt: model ${esc(aiModelLabel())} · task ${esc(task)} · ${esc(new Date().toLocaleString("en-GB"))}</div>`;
@@ -382,78 +513,100 @@ function printRecord(cur, flow){
 /* ---------- nav ---------- */
 function setView(v){
   state.view = v;
-  document.querySelectorAll(".nav a").forEach(a=>a.classList.toggle("active", a.dataset.view===v));
-  $("#nav").classList.remove("open");
+  document.querySelectorAll(".channels .ch").forEach(b=>{
+    if(b.dataset.view===v)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");
+  });
   render();
+  main.setAttribute("tabindex","-1");main.focus({preventScroll:true});
 }
-$("#hamb").addEventListener("click", ()=> $("#nav").classList.toggle("open"));
-document.querySelectorAll(".nav a").forEach(a=> a.addEventListener("click", ()=> setView(a.dataset.view)));
-$("#setbtn").addEventListener("click", e=>{ e.stopPropagation(); $("#setpanel").classList.toggle("open"); });
-document.addEventListener("click", e=>{ if(!e.target.closest(".settings")) $("#setpanel").classList.remove("open"); });
-$("#seg-os").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.os=b.dataset.os; $("#seg-os").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); updateCtx(); render(); });
-$("#seg-env").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.env=b.dataset.env; $("#seg-env").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); updateCtx(); render(); });
+document.querySelectorAll(".channels .ch").forEach(b=> b.addEventListener("click", ()=> setView(b.dataset.view)));
+$("#homelink").addEventListener("click",e=>{e.preventDefault();setView("diagnose");});
+$("#setbtn").addEventListener("click", ()=>{
+  const open=$("#setup").classList.toggle("open");
+  $("#setbtn").setAttribute("aria-expanded",String(open));
+});
+$("#seg-os").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.os=b.dataset.os; syncSeg("seg-os","os",state.os); updateCtx(); render(); });
+$("#seg-env").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.env=b.dataset.env; syncSeg("seg-env","env",state.env); updateCtx(); render(); });
+$("#seg-field").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.field=b.dataset.field==="on"; syncSeg("seg-field","field",state.field?"on":"off"); render(); });
 
 function updateCtx(){
   const bits = [`OS <b>${OSLABEL[state.os]}</b>`, `environment <b>${ENVLABEL[state.env]}</b>`];
   if(state.store) bits.push(`store <b>${esc(state.store)}</b>`);
   if(state.field) bits.push(`<b>field mode</b>`);
-  $("#ctx").innerHTML = "context: " + bits.join(" · ") + ` · ${Object.keys(FLOWS).length} diagnostic flows`;
+  $("#ctx").innerHTML = "setup: " + bits.join(" · ") + ` · ${Object.keys(FLOWS).length} diagnostic flows`;
 }
 
 /* ---------- diagnose view ---------- */
 function diagnoseView(){
   if(!state.flow){
     const keys = Object.keys(FLOWS);
-    const banner = state.multi ? `<div class="banner enter"><b>Multiple users affected.</b> This is likely a site-wide fault. Open a major incident and escalate before troubleshooting one machine.</div>` : "";
-    const pick = keys.map((k,i)=>`<button class="symptom" data-key="${k}"><span class="n">${i+1}</span><span><span class="t">${esc(FLOWS[k].title)}</span><span class="d">${esc(FLOWS[k].description)}</span></span></button>`).join("");
+    const banner = state.multi ? `<div class="banner enter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-alert"/></svg><span><b>Multiple users affected.</b> This is likely a site-wide fault. Open a major incident and escalate before troubleshooting one machine.</span></div>` : "";
+    const pick = keys.map((k,i)=>`<button class="symptom" data-key="${k}"><span class="n">CH${i+1}</span><span><span class="t">${esc(FLOWS[k].title)}</span><br><span class="d">${esc(FLOWS[k].description)}</span></span></button>`).join("");
     main.innerHTML = `<div class="view enter">
       <div class="precheck">
         <span class="q">Is this affecting more than one person?</span>
-        <div class="seg" id="seg-multi">
+        <div class="seg" id="seg-multi" role="group" aria-label="Scope">
           <button data-multi="no" class="${state.multi?'':'on'}">No, one user</button>
           <button data-multi="yes" class="${state.multi?'on':''}">Yes, several</button>
         </div>
       </div>
       ${banner}
       <div class="aibox">
-        <p class="albl">AI assist · optional</p>
-        <div class="arow"><input id="errin" placeholder="Paste an error code or message, e.g. DNS_PROBE_FINISHED_NXDOMAIN" /><select id="aimodel" title="AI model"><option value="flash">DeepSeek Flash</option><option value="pro">DeepSeek Pro</option><option value="minimax">MiniMax M3</option></select><button class="btn btn-primary" id="explain">Explain</button></div>
+        <p class="albl"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px" aria-hidden="true"><use href="#n-spark"/></svg>Signal analyzer · AI, optional</p>
+        <div class="arow">
+          <label class="sr-only" for="errin">Error code or message</label>
+          <input id="errin" placeholder="Paste an error code or message, e.g. DNS_PROBE_FINISHED_NXDOMAIN" />
+          <label class="sr-only" for="aimodel">AI model</label>
+          <select id="aimodel"><option value="flash">DeepSeek Flash</option><option value="pro">DeepSeek Pro</option><option value="minimax">MiniMax M3</option></select>
+          <button class="btn btn-primary" id="explain">Explain</button>
+        </div>
         <div class="airesult" id="airesult"></div>
       </div>
       <div class="aibox">
-        <p class="albl">Not sure which? Describe it · AI router</p>
-        <div class="arow"><input id="routein" placeholder="e.g. on VPN, can't open SharePoint but email works" /><button class="btn btn-ghost" id="route">Route</button></div>
+        <p class="albl"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px" aria-hidden="true"><use href="#n-probe"/></svg>Not sure which input? Describe it · AI router</p>
+        <div class="arow">
+          <label class="sr-only" for="routein">Describe the fault</label>
+          <input id="routein" placeholder="e.g. on VPN, can't open SharePoint but email works" />
+          <button class="btn btn-ghost" id="route">Route</button>
+        </div>
         <div class="airesult" id="routeresult"></div>
       </div>
+      <p class="picklbl">Input select — pick the symptom</p>
       <div class="pick">${pick}</div>
     </div>`;
     $("#seg-multi").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.multi = b.dataset.multi==="yes"; render(); });
-    main.querySelectorAll(".symptom").forEach(b=> b.addEventListener("click", ()=>{ state.key=b.dataset.key; state.flow=FLOWS[b.dataset.key]; state.stepId=FLOWS[b.dataset.key].start; state.history=[]; render(); }));
+    main.querySelectorAll(".symptom").forEach(b=> b.addEventListener("click", ()=>{ state.key=b.dataset.key; state.flow=FLOWS[b.dataset.key]; state.stepId=FLOWS[b.dataset.key].start; state.history=[]; render(); announce("Flow started: "+FLOWS[state.key].title); }));
     const ex=$("#explain"), errin=$("#errin"), ar=$("#airesult");
     if(ex){
-      const go=async()=>{ const v=errin.value.trim(); if(!v)return; ar.innerHTML="Analysing the error…";
+      const go=async()=>{ const v=errin.value.trim(); if(!v)return;
+        ex.setAttribute("aria-busy","true");ex.innerHTML='<span class="spin" aria-hidden="true"></span>Analysing…';
         try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({input:v,model:($("#aimodel")?.value||"flash")})});
           if(!r.ok) throw 0; const d=await r.json();
           ar.innerHTML=`<span class="ex">${esc(d.explanation||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"")+aiReceipt("explain");
-        }catch(e){ ar.innerHTML=`<span class="note">AI assist is not enabled on this deploy yet (set NVIDIA_API_KEY in Vercel). The rule-based diagnostics below work without it.</span>`; } };
+        }catch(e){ ar.innerHTML=`<span class="note">AI assist is not enabled on this deploy yet (set NVIDIA_API_KEY in Vercel). The rule-based diagnostics below work without it.</span>`; }
+        ex.removeAttribute("aria-busy");ex.textContent="Explain";
+      };
       ex.addEventListener("click", go);
       errin.addEventListener("keydown", e=>{ if(e.key==="Enter") go(); });
     }
     const rt=$("#route"), routein=$("#routein"), rr=$("#routeresult");
     if(rt){
-      const go=async()=>{ const v=routein.value.trim(); if(!v)return; rr.innerHTML="Routing…";
+      const go=async()=>{ const v=routein.value.trim(); if(!v)return;
+        rt.setAttribute("aria-busy","true");rt.innerHTML='<span class="spin" aria-hidden="true"></span>Routing…';
         try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task:"route",input:v,model:($("#aimodel")?.value||"flash")})});
           if(!r.ok) throw 0; const d=await r.json(); const f=FLOWS[d.flow];
           rr.innerHTML=`<span class="ex">${esc(d.plan||"")}</span>`+(d.layer?`<br><span class="lyr">Start at: ${esc(d.layer)} layer</span>`:"")+(f?`<br><button class="btn btn-primary" id="startrouted" style="margin-top:10px">Start: ${esc(f.title)}</button>`:"")+aiReceipt("route");
           const sb=$("#startrouted"); if(sb)sb.addEventListener("click",()=>{ state.key=d.flow; state.flow=f; state.stepId=f.start; state.history=[]; render(); });
-        }catch(e){ rr.innerHTML=`<span class="note">AI router needs the backend (set NVIDIA_API_KEY). Pick a symptom below instead.</span>`; } };
+        }catch(e){ rr.innerHTML=`<span class="note">AI router needs the backend (set NVIDIA_API_KEY). Pick a symptom below instead.</span>`; }
+        rt.removeAttribute("aria-busy");rt.textContent="Route";
+      };
       rt.addEventListener("click", go);
       routein.addEventListener("keydown", e=>{ if(e.key==="Enter") go(); });
     }
     return;
   }
   const flow = state.flow;
-  const nodes = state.history.map(h=>{ const s=flow.steps[h.id]; const body = state.field ? stepBody(s) : `<div class="step">${esc(s.text)}</div>${cmdFor(s)?`<div class="cmd">${esc(cmdFor(s))}</div>`:""}`; return `<div class="node done ${h.passed?'':'fail'}">${body}<div><span class="verdict ${h.passed?'pass':'fail'}">${h.passed?'looked healthy':'not right'}</span></div></div>`; }).join("");
+  const nodes = state.history.map(h=>{ const s=flow.steps[h.id]; const body = state.field ? stepBody(s) : `<div class="step">${esc(s.text)}</div>${cmdFor(s)?`<div class="cmd">${esc(cmdFor(s))}</div>`:""}`; return `<div class="node done ${h.passed?'':'fail'}">${body}<div><span class="verdict ${h.passed?'pass':'fail'}">${h.passed?'signal clean':'signal lost'}</span></div></div>`; }).join("");
   const cur = flow.steps[state.stepId];
   let active="";
   if(cur.kind==="check"){
@@ -462,12 +615,12 @@ function diagnoseView(){
   } else {
     const hint = (ENV_HINT[state.stepId]||{})[state.env] || "";
     active = `<div class="conclusion enter">
-      <p class="clbl">Diagnosis</p>
+      <p class="clbl"><span class="led" aria-hidden="true"></span>Diagnosis locked</p>
       <h3>${esc(cur.cause)}</h3>
       <div class="blk"><div class="h fix">Fix</div><p>${esc(cur.fix)}</p></div>
       ${hint?`<div class="blk"><div class="h env">In this environment (${ENVLABEL[state.env]})</div><p>${esc(hint)}</p></div>`:""}
       <div class="blk"><div class="h">When to escalate</div><p>${esc(cur.escalate)}</p></div>
-      <div class="blk"><div class="h">Resolution (for the record)</div><textarea class="recbox" id="restext" placeholder="What finally fixed it. Optional, used on the incident record."></textarea></div>
+      <div class="blk"><div class="h">Resolution (for the record)</div><label class="sr-only" for="restext">Resolution notes</label><textarea class="recbox" id="restext" placeholder="What finally fixed it. Optional, used on the incident record."></textarea></div>
       <div class="concl-actions">
         <button class="btn btn-primary" id="mkcard">Generate escalation card</button>
         <button class="btn btn-ghost" id="ainote">AI escalation note</button>
@@ -480,9 +633,9 @@ function diagnoseView(){
     state.lastResult = { key:state.key, title:flow.title, history:state.history.slice(), conclusion:cur, stepId:state.stepId };
   }
   main.innerHTML = `<div class="view enter">
-    <div class="topflow"><button class="btn btn-ghost" id="back">&larr; Symptoms</button><span class="flowtitle">${esc(flow.title)}</span></div>
-    ${state.multi?`<div class="banner"><b>Multiple users affected.</b> Treat as a possible major incident.</div>`:""}
-    <div class="spine">${nodes}${active}</div>
+    <div class="topflow"><button class="btn btn-ghost" id="back">&larr; Inputs</button><span class="flowtitle">${esc(flow.title)}</span></div>
+    ${state.multi?`<div class="banner"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-alert"/></svg><span><b>Multiple users affected.</b> Treat as a possible major incident.</span></div>`:""}
+    <div class="scopescreen"><div class="spine">${nodes}${active}</div></div>
   </div>`;
   const back=$("#back"); if(back) back.addEventListener("click", resetFlow);
   const rs=$("#restart"); if(rs) rs.addEventListener("click", resetFlow);
@@ -490,20 +643,28 @@ function diagnoseView(){
   const rn=$("#resnote"); if(rn) rn.addEventListener("click", ()=>{ const tag=({"store-pos-down":"pos","site-down-whole-office":"network","one-pc-no-internet":"network","cant-reach-internal-vpn":"vpn","wifi-drops":"wifi"})[state.key]||""; const q=encodeURIComponent((state.store?state.store+" ":"")+(tag||flow.title)); window.open(LINKS.resolveNotes+"?q="+q, "_blank", "noopener"); });
   const pr=$("#prec"); if(pr) pr.addEventListener("click", ()=> printRecord(cur, flow));
   const an=$("#ainote"); if(an) an.addEventListener("click", async ()=>{
-    const ao=$("#ainoteout"); an.textContent="Writing…";
+    const ao=$("#ainoteout");
+    an.setAttribute("aria-busy","true");an.innerHTML='<span class="spin" aria-hidden="true"></span>Writing…';
     const sess={title:flow.title,steps:state.history.map(h=>({text:flow.steps[h.id].text,passed:h.passed})),cause:cur.cause,fix:cur.fix,escalate:cur.escalate};
     try{ const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task:"narrative",session:sess,model:($("#aimodel")?.value||"flash")})});
       if(!r.ok) throw 0; const d=await r.json();
-      ao.innerHTML=`<div class="cmd" style="display:block;white-space:pre-wrap;border-left-color:var(--amber)">${esc(d.note||"")}</div><button class="btn btn-ghost" id="cpnote" style="margin-top:8px">Copy note</button>`+aiReceipt("narrative");
-      an.textContent="AI escalation note";
-      const cp=$("#cpnote"); if(cp)cp.addEventListener("click",async()=>{await navigator.clipboard.writeText(d.note||"");cp.textContent="Copied";setTimeout(()=>cp.textContent="Copy note",1400);});
-    }catch(e){ an.textContent="AI escalation note"; ao.innerHTML=`<span class="note" style="color:var(--mute);font-size:13px">Needs NVIDIA_API_KEY. The copyable card works without AI.</span>`; }
+      ao.innerHTML=`<div class="cmd" style="display:block;white-space:pre-wrap">${esc(d.note||"")}</div><button class="btn btn-ghost" id="cpnote" style="margin-top:8px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-copy"/></svg>Copy note</button>`+aiReceipt("narrative");
+      const cp=$("#cpnote"); if(cp)cp.addEventListener("click",async()=>{await navigator.clipboard.writeText(d.note||"");cp.textContent="Copied";setTimeout(()=>cp.innerHTML='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-copy"/></svg>Copy note',1400);});
+    }catch(e){ ao.innerHTML=`<span class="note">Needs NVIDIA_API_KEY. The copyable card works without AI.</span>`; }
+    an.removeAttribute("aria-busy");an.textContent="AI escalation note";
   });
-  main.querySelectorAll(".answers button").forEach(b=> b.addEventListener("click", ()=>{ const passed=b.dataset.a==="pass"; state.history.push({id:state.stepId,passed}); state.stepId = passed?cur.on_pass:cur.on_fail; render(); }));
+  main.querySelectorAll(".answers button").forEach(b=> b.addEventListener("click", ()=>{
+    const passed=b.dataset.a==="pass";
+    state.history.push({id:state.stepId,passed});
+    state.stepId = passed?cur.on_pass:cur.on_fail;
+    render();
+    const nxt=state.flow.steps[state.stepId];
+    announce(passed?"Check passed. "+(nxt.kind==="check"?"Next check ready.":"Diagnosis locked."):"Check failed. "+(nxt.kind==="check"?"Next check ready.":"Diagnosis locked."));
+  }));
 }
 function resetFlow(){ state.flow=null; state.key=null; state.stepId=null; state.history=[]; render(); }
 
-/* ---------- escalation card view ---------- */
+/* ---------- escalation card (unchanged text contract) ---------- */
 function escalationText(r){
   const now = new Date();
   const hh = now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
@@ -527,18 +688,18 @@ function escalationText(r){
 }
 function escalationView(){
   const r = state.lastResult;
-  if(!r){ main.innerHTML = `<div class="view enter"><div class="empty"><b>No diagnosis yet.</b><br>Run a diagnostic in the Diagnose tab and reach a conclusion. The escalation card builds itself from the checks you completed, ready to paste into a ticket.</div></div>`; return; }
+  if(!r){ main.innerHTML = `<div class="view enter"><div class="empty"><b>No diagnosis on the screen yet.</b><br>Run a diagnostic on CH1 and reach a conclusion. The escalation card builds itself from the checks you completed, ready to paste into a ticket.</div></div>`; return; }
   r.flowSteps = FLOWS[r.key].steps;
   const text = escalationText(r);
   main.innerHTML = `<div class="view escwrap enter">
-    <div class="escbar"><span class="flowtitle" style="font-family:var(--mono);font-weight:700">Escalation card</span><button class="btn btn-primary" id="copy">Copy to clipboard</button><button class="btn btn-ghost" id="re">Back to diagnosis</button></div>
+    <div class="escbar"><span class="flowtitle scope" style="font-weight:700">Escalation card</span><button class="btn btn-primary" id="copy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-copy"/></svg>Copy to clipboard</button><button class="btn btn-ghost" id="re">Back to diagnosis</button></div>
     <pre class="card" id="cardtext">${esc(text)}</pre>
   </div>`;
-  $("#copy").addEventListener("click", async ()=>{ await navigator.clipboard.writeText(text); $("#copy").textContent="Copied"; setTimeout(()=>$("#copy").textContent="Copy to clipboard",1400); });
+  $("#copy").addEventListener("click", async ()=>{ await navigator.clipboard.writeText(text); $("#copy").textContent="Copied"; announce("Escalation card copied"); setTimeout(()=>$("#copy").innerHTML='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#n-copy"/></svg>Copy to clipboard',1400); });
   $("#re").addEventListener("click", ()=> setView("diagnose"));
 }
 
-/* ---------- reference view ---------- */
+/* ---------- reference ---------- */
 function referenceView(){
   const rows = [
     ["Show IP config","showip_all"],
@@ -570,7 +731,6 @@ function render(){
   else if(state.view==="escalation") escalationView();
   else referenceView();
 }
-$("#seg-field").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; state.field=b.dataset.field==="on"; $("#seg-field").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); render(); });
 (function initFromURL(){
   try{
     const p=new URLSearchParams(location.search);

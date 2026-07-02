@@ -1,0 +1,101 @@
+/* ════════════════════════════════════════════════════════════════════
+   NET-DOCTOR · "BENCH OSCILLOSCOPE" DESIGN SYSTEM — TOKENS
+   Project: net-doctor · github.com/Kabelo-Theko/net-doctor
+   Persona: a bench scope for network faults — phosphor trace, graticule,
+   channel buttons, trigger verdicts.
+   Themes on html[data-theme]: screen (CRT, default) · manual (paper).
+   Measured pairs: accessibility.md. Glow budget ≤ .14 alpha.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════
+   NET-DOCTOR · "BENCH OSCILLOSCOPE" — the network fault on a scope.
+   Phosphor-on-CRT screen, graticule spine, channel-button nav,
+   trigger verdicts. Probe one layer at a time; stop at the first
+   broken one.
+   Themes: screen (CRT, default) · manual (paper service-manual)
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  --font-scope:"Azeret Mono",ui-monospace,monospace;   /* readouts + data */
+  --font-text:"Schibsted Grotesk",system-ui,sans-serif; /* explanations   */
+  --text-xs:.71875rem;--text-sm:.8125rem;--text-base:.9375rem;--text-md:1.0625rem;
+  --text-lg:1.1875rem;--text-xl:1.5rem;
+  --text-display:clamp(1.6rem,1.1rem + 2.4vw,2.6rem);
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;
+  --space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;--space-16:64px;
+  --radius-xs:3px;--radius-sm:6px;--radius-md:10px;
+  --motion-micro:110ms;--motion-small:190ms;--motion-large:280ms;--motion-page:380ms;
+  --ease-standard:cubic-bezier(.2,0,0,1);
+  --ease-trace:cubic-bezier(.3,.7,.1,1);
+  --bench-max:940px;
+}
+:root,html[data-theme="screen"]{
+  color-scheme:dark;
+  --canvas-base:#0B110D;         /* CRT housing black-green   */
+  --canvas-screen:#0D1710;       /* the phosphor screen       */
+  --canvas-panel:#131B15;        /* bezel panels              */
+  --canvas-inset:#080D0A;        /* command wells             */
+  --canvas-overlay:#1A241C;
+  --text-max:#EAF5EC;            /* 15.5:1 on base            */
+  --text-primary:#D2E2D5;        /* 12.2:1                    */
+  --text-secondary:#96AB9B;      /* 6.6:1                     */
+  --text-tertiary:#7E937F;       /* 5.0:1 (base only)         */
+  --text-disabled:#48584B;
+  --phos:#5BEB9E;                /* phosphor green · 10.5:1   */
+  --phos-dim:#38B978;
+  --phos-ink:#04140B;            /* on solid phosphor · 12.9:1 */
+  --phos-subtle:rgba(91,235,158,.09);
+  --phos-border:rgba(91,235,158,.4);
+  --phos-glow:0 0 14px rgba(91,235,158,.14);
+  --fail:#FF7A66;                /* fail trace · 7.5:1        */
+  --fail-ink:#230703;
+  --fail-subtle:rgba(255,122,102,.10);
+  --fail-border:rgba(255,122,102,.42);
+  --cursor:#F5C86B;              /* amber cursor/warn · 10.4:1 */
+  --cursor-subtle:rgba(245,200,107,.10);
+  --graticule:rgba(91,235,158,.07);
+  --graticule-strong:rgba(91,235,158,.14);
+  --border-default:rgba(210,226,213,.10);
+  --border-strong:rgba(210,226,213,.22);
+  --shadow-1:0 1px 3px rgba(0,0,0,.45);
+  --shadow-2:0 10px 26px rgba(0,0,0,.55);
+  --inner-edge:inset 0 0 0 1px rgba(210,226,213,.04);
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--phos);
+  --scrim:rgba(2,6,3,.72);
+  --scanline:rgba(0,0,0,.14);
+}
+html[data-theme="manual"]{
+  color-scheme:light;
+  --canvas-base:#F4F3EC;         /* service-manual paper      */
+  --canvas-screen:#EDF3EA;       /* schematic panel           */
+  --canvas-panel:#FCFBF6;
+  --canvas-inset:#E7EAE0;
+  --canvas-overlay:#FCFBF6;
+  --text-max:#161B15;            /* 15.5:1                    */
+  --text-primary:#28312A;        /* 11.6:1                    */
+  --text-secondary:#525F53;      /* 6.3:1                     */
+  --text-tertiary:#67755F;       /* 4.6:1 (base only)         */
+  --text-disabled:#A9B2A3;
+  --phos:#156B3F;                /* schematic green · 6.6:1   */
+  --phos-dim:#3D8A63;
+  --phos-ink:#F2FBF4;            /* 6.2:1 on solid            */
+  --phos-subtle:rgba(21,107,63,.09);
+  --phos-border:rgba(21,107,63,.4);
+  --phos-glow:none;
+  --fail:#A5352A;                /* 6.4:1                     */
+  --fail-ink:#FFF5F3;
+  --fail-subtle:rgba(165,53,42,.08);
+  --fail-border:rgba(165,53,42,.4);
+  --cursor:#7A5A00;              /* 5.9:1                     */
+  --cursor-subtle:rgba(150,110,0,.10);
+  --graticule:rgba(21,107,63,.10);
+  --graticule-strong:rgba(21,107,63,.20);
+  --border-default:rgba(40,49,42,.15);
+  --border-strong:rgba(40,49,42,.28);
+  --shadow-1:0 1px 2px rgba(40,49,42,.06),0 2px 6px rgba(40,49,42,.06);
+  --shadow-2:0 10px 26px -8px rgba(40,49,42,.18);
+  --inner-edge:inset 0 0 0 1px rgba(255,255,255,.5);
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--phos);
+  --scrim:rgba(22,27,21,.45);
+  --scanline:transparent;
+}
+
