@@ -1,0 +1,97 @@
+/* ════════════════════════════════════════════════════════════════════
+   NET-DOCTOR v2 · "CALM FIELD GUIDE" DESIGN SYSTEM — TOKENS
+   Project: net-doctor · github.com/Kabelo-Theko/net-doctor
+   Persona: a steady hand at 2am — warm obsidian, bone ink, one aqua
+   pulse. Probe one layer at a time; stop at the first broken one.
+   Themes on html[data-theme]: field (warm dark, default) · bone (light).
+   Type: Clash Display + General Sans (Fontshare) · Red Hat Mono
+   (commands only). Measured pairs: accessibility.md.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════
+   NET-DOCTOR v2 · "CALM FIELD GUIDE" — a steady hand at 2am.
+   Warm obsidian, bone ink, one aqua pulse. Probe one layer at a
+   time; stop at the first broken one.
+   Themes: field (warm dark, default) · bone (warm light)
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  --font-display:"Clash Display","General Sans",sans-serif;
+  --font-text:"General Sans",system-ui,sans-serif;
+  --font-mono:"Red Hat Mono",ui-monospace,monospace;   /* commands + ids only */
+  --text-xs:.75rem;--text-sm:.875rem;--text-base:.9375rem;--text-md:1.0625rem;
+  --text-lg:1.25rem;--text-xl:1.625rem;
+  --text-h2:clamp(1.5rem,1.2rem + 1.2vw,2rem);
+  --text-hero:clamp(2.2rem,1.5rem + 3.4vw,3.9rem);
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;
+  --space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;--space-16:64px;
+  --radius-sm:10px;--radius-md:14px;--radius-lg:20px;--radius-xl:26px;--radius-pill:999px;
+  --motion-micro:130ms;--motion-small:210ms;--motion-large:300ms;--motion-page:400ms;
+  --ease-standard:cubic-bezier(.2,0,0,1);
+  --ease-spring:cubic-bezier(.34,1.26,.5,1);
+  --ease-emphasized:cubic-bezier(.05,.7,.1,1);
+  --rail-w:216px;
+  --content-max:880px;
+}
+:root,html[data-theme="field"]{
+  color-scheme:dark;
+  --canvas-base:#131110;        /* warm obsidian            */
+  --canvas-surface:#1C1917;     /* cards                    */
+  --canvas-raised:#242019;      /* hover / raised           */
+  --canvas-inset:#0D0B0A;       /* command wells            */
+  --canvas-overlay:#2A251F;
+  --text-max:#F7F4EE;
+  --text-primary:#F3EFE9;       /* bone · 16.4:1            */
+  --text-secondary:#B5AC9F;     /* 7.8:1 on surface         */
+  --text-tertiary:#9A9184;      /* 5.6:1 on base            */
+  --text-disabled:#57514A;
+  --accent:#3ECFBB;             /* the pulse · 9.7:1        */
+  --accent-hover:#5FDCC9;
+  --accent-pressed:#2FB8A5;
+  --accent-text:#8AE0D2;        /* 12.3:1                   */
+  --accent-subtle:rgba(62,207,187,.10);
+  --accent-border:rgba(62,207,187,.38);
+  --on-accent:#062A24;          /* 8.0:1 on aqua            */
+  --pass:#5BC98A;   --pass-ink:#0A2C1A;  --pass-text:#7ED8A3; --pass-subtle:rgba(91,201,138,.10);
+  --fail:#F08A7B;   --fail-ink:#2B0B06;  --fail-text:#F5A99D; --fail-subtle:rgba(240,138,123,.10);
+  --amber:#E8C87D;  --amber-text:#E8C87D; --amber-subtle:rgba(232,200,125,.10);
+  --border-default:rgba(243,239,233,.09);
+  --border-strong:rgba(243,239,233,.20);
+  --shadow-1:0 1px 3px rgba(0,0,0,.4);
+  --shadow-2:0 12px 32px -8px rgba(0,0,0,.55);
+  --ring-accent:0 0 0 1.5px var(--accent-border);
+  --cmd-ink:#8AE0D2;           /* 12.9:1 on inset          */
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--accent);
+  --scrim:rgba(4,3,2,.72);
+}
+html[data-theme="bone"]{
+  color-scheme:light;
+  --canvas-base:#F5F1E8;        /* bone                     */
+  --canvas-surface:#FDFBF5;
+  --canvas-raised:#FFFFFF;
+  --canvas-inset:#EBE5D8;
+  --canvas-overlay:#FFFFFF;
+  --text-max:#1C1712;
+  --text-primary:#26211B;       /* 14.2:1                   */
+  --text-secondary:#5E564A;     /* 7.0:1 on surface         */
+  --text-tertiary:#6E6557;      /* 5.0:1 on base            */
+  --text-disabled:#B4AC9E;
+  --accent:#0F7A6D;             /* deep aqua                */
+  --accent-hover:#0C665B;
+  --accent-pressed:#095349;
+  --accent-text:#0F7A6D;        /* 4.6:1 — labels/large     */
+  --accent-subtle:rgba(15,122,109,.09);
+  --accent-border:rgba(15,122,109,.4);
+  --on-accent:#F2FBF9;          /* 5.0:1 on deep aqua       */
+  --pass:#20713F;   --pass-ink:#F2FBF5;  --pass-text:#20713F; --pass-subtle:rgba(32,113,63,.10);
+  --fail:#AC3A2B;   --fail-ink:#FFF5F3;  --fail-text:#AC3A2B; --fail-subtle:rgba(172,58,43,.09);
+  --amber:#7A5600;  --amber-text:#7A5600; --amber-subtle:rgba(150,106,0,.12);
+  --border-default:rgba(38,33,27,.13);
+  --border-strong:rgba(38,33,27,.26);
+  --shadow-1:0 1px 2px rgba(38,33,27,.05),0 3px 10px rgba(38,33,27,.06);
+  --shadow-2:0 12px 30px -10px rgba(38,33,27,.16);
+  --ring-accent:0 0 0 1.5px var(--accent-border);
+  --cmd-ink:#0A5A50;           /* 5.7:1 on inset           */
+  --focus-ring:0 0 0 2px var(--canvas-base),0 0 0 4px var(--accent);
+  --scrim:rgba(28,23,18,.45);
+}
+
